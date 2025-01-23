@@ -1,7 +1,7 @@
 # Protocol Requirements
 
     - Reliable communication (ack system)
-    - Duplex communication
+    - Half-duplex communication **** LORA IS HALF DUPLEX - ONLY ONE DEVICE CAN TRANSMIT AT A TIME
     - Error detection
     - Forward Error correction **** FEC IS BUILT INTO LORA
         - Repetition
@@ -34,9 +34,9 @@ Acknowledgement Number: 8 bits
     Used to acknowledge packets received
 
 Type: Protocol Type (include rep#?)
-    Command - (includes SYN/ACK flags)
-    Telemetry
-    Idle - 0x00
+    Command - includes SYN/ACK flags for connection (similar to TCP)
+    Telemetry - Best effort (like UDP)
+    Idle - 0x00 (no data) only sends periodically to keep connection alive (or can be sent by balloon to sense if balloon is in range)
 
 Checksum: Ensures packet header integrity
 

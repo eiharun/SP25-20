@@ -26,3 +26,7 @@ def test_open1_packet_construct():
 
 ##
 
+#Test Cases: (Default packet = OPEN 1)
+# 1. Send packet to balloon, balloon recieves and sends back an SYN/ACK, ground station recieves SYN/ACK, and sends ACK, balloon recieves ACK. Perfect scenario.
+# 2. Send packet to balloon, balloon recieves and sends back an SYN/ACK, ground station recieves SYN/ACK, and sends ACK, balloon does not recieve ACK, retransmits SYN/ACK, ground station recieves SYN/ACK, resends ACK, balloon recieves ACK.
+# 3. TODO..... (more test cases)
