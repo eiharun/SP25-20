@@ -65,3 +65,23 @@ Seq number = outgoing sequence number which is incremented by 1 every retranmiss
 Every new packet will have seq number 0x01
 
 If two packets are recieved with same seq number. They are treated as seperate commands
+
+# How to run tests
+
+From the root directory of the communication protocol project run the following command:
+
+```bash
+> export PYTHONPATH=src
+```
+
+Then run the following command to run the tests:
+
+```bash
+> pytest test
+```
+
+or for a specific test file:
+
+```bash
+> pytest test/test_file.py
+```

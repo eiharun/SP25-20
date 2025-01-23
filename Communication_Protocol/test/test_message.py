@@ -8,7 +8,7 @@ def test_open1_message_encode():
     assert message.command.value == 64
     assert message.data == 1
     assert message.length == 1
-    assert message.payload == b""
+    assert message.payload == None
     encoded_msg = message.encode()
     #b01000000-00000001-00000001
     assert encoded_msg == b"\x40\x01\x01"
@@ -20,7 +20,7 @@ def test_open275_message_encode():
     assert message.command.value == 64
     assert message.data == 275
     assert message.length == 2
-    assert message.payload == b""
+    assert message.payload == None
     encoded_msg = message.encode()
     #b01000000-00000010-00000001-00010011
     assert encoded_msg == b"\x40\x02\x01\x13"
@@ -33,7 +33,7 @@ def test_emptyopen_message_encode():
         assert message.command.value == 64
         assert message.data == None
         assert message.length == 0
-        assert message.payload == b""
+        assert message.payload == None
         encoded_msg = message.encode()
         
 def test_idle_message_encode():
@@ -42,7 +42,7 @@ def test_idle_message_encode():
     assert message.command.value == 0
     assert message.data == None
     assert message.length == 0
-    assert message.payload == b""
+    assert message.payload == None
     encoded_msg = message.encode()
     #b00000000-00000000
     assert encoded_msg == b"\x00\x00"
@@ -54,7 +54,7 @@ def test_cutdown_message_encode():
     assert message.command.value == 1
     assert message.data == None
     assert message.length == 0
-    assert message.payload == b""
+    assert message.payload == None
     encoded_msg = message.encode()
     #b00000001-00000000
     assert encoded_msg == b"\x01\x00"
