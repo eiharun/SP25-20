@@ -2,10 +2,9 @@
 
     - Reliable communication (ack system)
     - Half-duplex communication **** LORA IS HALF DUPLEX - ONLY ONE DEVICE CAN TRANSMIT AT A TIME
-    - Error detection
+    - Error detection - Checksum
     - Forward Error correction **** FEC IS BUILT INTO LORA
         - Repetition
-        - Codeword + hamming distance
     - Low Data Rate (small packets)
     - Support for future expandability
 
@@ -18,53 +17,47 @@ Packet Structure:
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 0                   1                   2                   3
 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 bits
-            1               2               3               4 bytes
+              1               2               3               4 bytes
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-|       Sequence Number        |       Acknowledgement Number   |
+| T |     Flags/Options        |      Seq #    |     Ack #      |
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-|             Type             |           Checksum             |
+|     Tag      |  Data Length  |            Checksum            |
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 |                            Data                               |
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 
-Sequence Number: 8 bits
-    Used to keep track of packets sent and received
+Sequence Number: 4 bits
+    Used to keep track of number of packets resent in the event of a timeout
 
-Acknowledgement Number: 8 bits
-    Used to acknowledge packets received
+Acknowledgement Number: 4 bits
+    Used to acknowledge packets received, this number is equal to the sequence number of the packet being acknowledged + 1
 
-Type: Protocol Type (include rep#?)
-    Command - includes SYN/ACK flags for connection (similar to TCP)
-    Telemetry - Best effort (like UDP)
-    Idle - 0x00 (no data) only sends periodically to keep connection alive (or can be sent by balloon to sense if balloon is in range)
+Type(T): Packet Type
+    Idle - 00 - (no data) only sends periodically to keep connection alive (or can be sent by balloon to sense if balloon is in range)
+    Command - 01 - includes SYN/ACK flags for connection (similar to TCP)
+    Telemetry - 10 - Best effort (like UDP) - ground station periodically sends request for telemetry data, since response not guaranteed a connection based request could also be implemented if needed (idea: send telemetry data with each ack)
 
 Checksum: Ensures packet header integrity
 
-Data: TLV (Tag, Length, Value)
-    Tag = Command - 1 byte
+Data: TLV ([Tag, Length], Value)
+    Tag = Command or Type of data being sent - 1 byte
     Length = Length of Value - 1 byte
-    Value = Data - `Length` bytes
+    Value = Data - `Length` bytes - Padded using PKCS#7
 
-
-
----
-
-| Callsign |
-| Seq # | Ack # | Type | Checksum |
-| Tag/Command | Length | Value |
-
----
 
 ```
 
-Sequence and Acknowledgement Numbers are 0x00 only if it is not being used. Sequence and Acknowledgement cannot both be 0x00 only one or the other.
+# Protocol Behavior
 
-Ack number = incoming sequence number
-Seq number = outgoing sequence number which is incremented by 1 every retranmission
+Sequence # = 0 marks the beginning of a new communication session. After each packet SYN (or SYN/ACK) packet is sent, a timer is started to wait for an SYN/ACK with an ACK number of 1 [Seq#+1]. If the timer expires, the packet is resent and the sequence number is incremented. If the number of resends exceeds a threshold (254), the connection is terminated.
 
-Every new packet will have seq number 0x01
+When the SYN/ACK packet is recieved, the sequence number to the final outbound ACK packet remains the same as the initial packet that was recieved by the balloon. (This can also be calculated by subtracting the seq# from the ack# in the SYN/ACK packet and subtracting 1 from it). And the acknowledgement number is set to the sequence number of the SYN/ACK packet + 1. Now since both sides have acknowledged the connection, the balloon can execute the command in the packet.
 
-If two packets are recieved with same seq number. They are treated as seperate commands
+If a duplicate SYN/ACK packet is recieved, the ground station will resend a duplicate ACK packet. If the balloon recieves a duplicate ACK packet, it will ignore it.
+
+If the ACK is not recieved by the balloon before the timeout, the SYN/ACK packet will be resent and the sequence and acknowledge number will be incremented. It will then wait for the appropriate ACK packet.
+
+---
 
 # How to run tests
 
