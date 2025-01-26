@@ -1,3 +1,5 @@
+The protocol is being developed in this directory. Source code is under [src](src) and tests used to test the protocol behaviour are under [test](test).
+
 # Protocol Requirements
 
     - Reliable communication (ack system)
@@ -19,9 +21,9 @@ Packet Structure:
 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 bits
               1               2               3               4 bytes
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-| T |     Flags/Options        |      Seq #    |     Ack #      |
+|         Flags/Options        |      Seq #    |     Ack #      |
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-|     Tag      |  Data Length  |            Checksum            |
+|     Tag     |  Data Length   |            Checksum            |
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 |                            Data                               |
 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -32,10 +34,16 @@ Sequence Number: 4 bits
 Acknowledgement Number: 4 bits
     Used to acknowledge packets received, this number is equal to the sequence number of the packet being acknowledged + 1
 
-Type(T): Packet Type
-    Idle - 00 - (no data) only sends periodically to keep connection alive (or can be sent by balloon to sense if balloon is in range)
-    Command - 01 - includes SYN/ACK flags for connection (similar to TCP)
-    Telemetry - 10 - Best effort (like UDP) - ground station periodically sends request for telemetry data, since response not guaranteed a connection based request could also be implemented if needed (idea: send telemetry data with each ack)
+Flags/Options: Mostly used for future expandability/optimization as the protocol develops, and for Syn/Ack flags
+    - Type(T): Packet Type (included within the first 2 bits)
+        - Idle - 00 - (no data) only sends periodically to keep connection alive (or can be sent by balloon to sense if balloon is in range)
+        - Command - 01 - includes SYN/ACK flags for connection (similar to TCP)
+        - Telemetry - 10 - Best effort (like UDP) - ground station periodically sends request for telemetry data, since response not guaranteed a connection based request could also be implemented if needed (idea: send telemetry data with each ack)
+        - More if needed
+    - Syn/Ack Flags: last 2 bits (more if needed)
+        - SYN - 01 - Used to initiate a connection
+        - SYN/ACK - 11 - Used to acknowledge a connection and initiate a connection
+        - ACK - 10 - Used to acknowledge a connection
 
 Checksum: Ensures packet header integrity
 

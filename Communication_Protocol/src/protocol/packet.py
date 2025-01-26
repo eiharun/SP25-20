@@ -6,56 +6,71 @@ class Packet:
     """
     CALLSIGN = b"EXMP"
     
-    def __init__(self, seq, ack, rep, message: Message):
-        self.packet = b""
+    def __init__(self, message: Message, flags, seq=0, ack=0):
+        self.packet = []
         
-        if message.payload is None:
-            message.encode()#Encode the message if not already encoded
-        self.payload: bytes = message.get_payload()
+        self.msg = message.get_bytes()
+        self.msg_cmd, self.msg_len, self.msg_data = self.msg
         
+        self.flags = flags
         self.seq = seq
         self.ack = ack
-        self.rep = rep
-        
+        self.checksum=None
+    
     
     def construct_packet(self):
         """
         Constructs the packet
-        :param message: None
+        :param None
         :return: packet: bytes
         """
-        self.packet = self.CALLSIGN 
-        self.packet += self.seq.to_bytes(2, byteorder='big') + self.ack.to_bytes(2, byteorder='big') + self.rep.to_bytes(2, byteorder='big')
-        checksum = self._compute_checksum(self.packet)
-        self.packet += checksum
-        self.packet += self.payload
-        return self.packet
+        self.checksum=self._compute_checksum(self.msg, self.flags, self.seq, self.ack)
         
+        self.packet = [
+            self.CALLSIGN,
+            self.flags.to_bytes(2, byteorder='big'),
+            self.seq.to_bytes(1, byteorder='big'),
+            self.ack.to_bytes(1, byteorder='big'),
+            self.msg_cmd,
+            self.msg_len,
+            self.checksum,
+            self.msg_data
+        ]
+        return self.packet
+    
     def increment_seq(self):
         """
         Increments the sequence number
+        :return: reconstructed packet: bytes
         """
-        pass
+        self.seq += 1
+        return self.construct_packet()
     
     def increment_ack(self):
         """
         Increments the acknowledgement number
+        :return: reconstructed packet: bytes
         """
-        pass
+        self.ack += 1
+        return self.construct_packet()
     
-    def increment_rep(self):
+    def set_flags(self, flags):
         """
-        Increments the repetition number
+        Sets the flags of the packet
+        :param flags: bytes
+        :return: reconstructed packet: bytes
         """
-        pass
+        self.flags = flags
+        return self.construct_packet()
     
-    def _compute_checksum(self, header: bytes):
+    def _compute_checksum(self, msg, flags, seq, ack):
         """
-        Computes the checksum of the packet header
-        :param header: bytes
+        Computes the checksum of the packet
+        :param msg: Tuple[bytes, bytes. bytes]
         :return: checksum: bytes
         """
-        segments = [header[i:i+2] for i in range(0, len(header), 2)]
+        proto_packet = flags.to_bytes(2, byteorder='big') + seq.to_bytes(2, byteorder='big') + ack.to_bytes(1, byteorder='big') + msg[0] + msg[1] + b"\x00" + msg[2] #Checksum in protopacket set to 0 for now
+        segments = [proto_packet[i:i+2] for i in range(0, len(proto_packet), 2)]
         checksum = 0
         for segment in segments:
             checksum += int.from_bytes(segment, byteorder='big')
