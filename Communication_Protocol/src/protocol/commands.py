@@ -7,6 +7,7 @@ class Commands(Enum):
     OPEN=64      # Open for x seconds, then close
     #up to 193
     #commands with tbd data encoding schemes
+    TEST=194     # Test command
     #up to 255
 
 # Structure of the commands Enum:

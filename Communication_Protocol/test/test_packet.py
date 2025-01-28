@@ -1,4 +1,6 @@
 from protocol import Packet, Message
+from .fixtures import *
+import pytest
 
 def compute_checksum(msg, flags, seq, ack):
         """
@@ -57,3 +59,43 @@ def test_open275_packet_construct():
 # 1. Send packet to balloon, balloon recieves and sends back an SYN/ACK, ground station recieves SYN/ACK, and sends ACK, balloon recieves ACK. Perfect scenario.
 # 2. Send packet to balloon, balloon recieves and sends back an SYN/ACK, ground station recieves SYN/ACK, and sends ACK, balloon does not recieve ACK, retransmits SYN/ACK, ground station recieves SYN/ACK, resends ACK, balloon recieves ACK.
 # 3. TODO..... (more test cases)
+
+# @pytest.mark.asyncio
+# @pytest.mark.parametrize("setup_communication", [{"packet_loss_rate": 0.0, "latency_range": (1, 5)}], indirect=True)
+# async def test_communication(setup_communication):
+#     ground_station, balloon, channel = setup_communication
+
+#     # Simulate a message with sequence number and content
+#     packet = ground_station.create_packet(seq_num=1, msg="Hello, Balloon!")
+
+#     # Send the packet and wait for an acknowledgment
+#     try:
+#         transmitted_packet = await ground_station.send_packet(packet)
+#         assert transmitted_packet, "Packet transmission failed"
+#         # Now, Balloon receives the packet
+#         received_packet = balloon.receive_packet(transmitted_packet)
+#         assert received_packet, "Balloon failed to receive the packet"
+#         print("Test completed successfully!")
+#     except TimeoutError as e:
+#         print(str(e))
+#         assert False, "Test failed due to timeout"
+
+import pytest
+import asyncio
+
+@pytest.mark.asyncio
+async def test_communication_protocol():
+    # Setup the communication objects
+    channel = CommunicationChannel(packet_loss_rate=0.1, latency_range=(0.1, 0.5))
+    ground_station = GroundStation("Ground Station", channel)
+    balloon = Balloon("Balloon")
+
+    # Create and send a SYN packet
+    packet = ground_station.create_packet(msg="SYN")
+    try:
+        # Send the packet and wait for acknowledgment
+        ack_packet = await ground_station.send_packet(packet)
+        assert ack_packet is not None, "Failed to receive ACK packet"
+        print(f"Communication successful with seq={packet.seq} ack={ack_packet.ack}")
+    except TimeoutError as e:
+        assert False, str(e)
