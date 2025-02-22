@@ -4,3 +4,6 @@
 [submodule "HAB_STM32/HAB_STM32/stm32-hal-rfm95"]
 	path = HAB_STM32/HAB_STM32/stm32-hal-rfm95
 	url = https://github.com/henriheimann/stm32-hal-rfm95.git
+[submodule "HAB_STM32/stm32-hal-rfm95"]
+	path = HAB_STM32/stm32-hal-rfm95
+	url = https://github.com/henriheimann/stm32-hal-rfm95.git
