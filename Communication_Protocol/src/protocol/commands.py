@@ -15,3 +15,9 @@ class Commands(Enum):
 #64-191: Reserved for commands with BCD data payloads
 #192-255: Reserved for commands with TBD encoded data payloads
 # Subject to change as more commands are added
+
+
+class Flags(Enum):
+    ACK=1
+    SYN=2
+    SYN_ACK=3

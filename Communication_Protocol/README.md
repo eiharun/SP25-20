@@ -68,6 +68,8 @@ If a duplicate SYN/ACK packet is recieved, the ground station will resend a dupl
 
 If the ACK is not recieved by the balloon before the timeout, the SYN/ACK packet will be resent and the sequence and acknowledge number will be incremented. It will then wait for the appropriate ACK packet.
 
+> If a seq# goes above its upper limit (8bits, 255) it will wrap around to 0.
+
 > Below is a visualisation of the protocol behavior with different test cases:
 
 ![Protocol Test Cases](test/test_cases.excalidraw.png)

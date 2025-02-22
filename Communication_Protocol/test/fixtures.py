@@ -56,7 +56,7 @@ class GroundStation:
 
 
 class Balloon:
-    def __init__(self, name):
+    def __init__(self, name, channel):
         self.name = name
         self.seq = 0
         self.ack = 0

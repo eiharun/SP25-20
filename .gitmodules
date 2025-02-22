@@ -1,0 +1,3 @@
+[submodule "HAB_STM32/LoRa-RFM95-STM32"]
+	path = HAB_STM32/LoRa-RFM95-STM32
+	url = https://github.com/MartiGeek17/LoRa-RFM95-STM32.git

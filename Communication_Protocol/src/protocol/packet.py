@@ -22,21 +22,22 @@ class Packet:
         """
         Constructs the packet
         :param None
-        :return: packet: bytes
+        :return: packet: List[bytes]
         """
         self.checksum=self._compute_checksum(self.msg, self.flags, self.seq, self.ack)
         
-        self.packet = [
-            self.CALLSIGN,
-            self.flags.to_bytes(2, byteorder='big'),
-            self.seq.to_bytes(1, byteorder='big'),
-            self.ack.to_bytes(1, byteorder='big'),
-            self.msg_cmd,
-            self.msg_len,
-            self.checksum,
-            self.msg_data
-        ]
-        return self.packet
+        # self.packet = [
+        #     self.CALLSIGN,
+        #     self.flags.to_bytes(2, byteorder='big'),
+        #     self.seq.to_bytes(1, byteorder='big'),
+        #     self.ack.to_bytes(1, byteorder='big'),
+        #     self.msg_cmd,
+        #     self.msg_len,
+        #     self.checksum,
+        #     self.msg_data
+        # ]
+        # return self.packet
+        return self
     
     def increment_seq(self):
         """
@@ -54,6 +55,24 @@ class Packet:
         self.ack += 1
         return self.construct_packet()
     
+    def set_seq(self, seq):
+        """
+        Sets the sequence number
+        :param seq: int
+        :return: reconstructed packet: bytes
+        """
+        self.seq = seq
+        return self.construct_packet()
+    
+    def set_ack(self, ack):
+        """
+        Sets the acknowledgement number
+        :param ack: int
+        :return: reconstructed packet: bytes
+        """
+        self.ack = ack
+        return self.construct_packet()
+    
     def set_flags(self, flags):
         """
         Sets the flags of the packet
@@ -62,6 +81,13 @@ class Packet:
         """
         self.flags = flags
         return self.construct_packet()
+    
+    def get_packet(self):
+        """
+        Gets the packet
+        :return: packet: bytes
+        """
+        return self
     
     def _compute_checksum(self, msg, flags, seq, ack):
         """
