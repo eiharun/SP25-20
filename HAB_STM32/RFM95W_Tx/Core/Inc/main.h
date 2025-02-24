@@ -63,6 +63,12 @@ void Error_Handler(void);
 #define RFM_CS_GPIO_Port GPIOA
 #define RFM_RST_Pin GPIO_PIN_4
 #define RFM_RST_GPIO_Port GPIOA
+#define RFM_INT1_Pin GPIO_PIN_9
+#define RFM_INT1_GPIO_Port GPIOA
+#define RFM_INT1_EXTI_IRQn EXTI9_5_IRQn
+#define RFM_INT0_Pin GPIO_PIN_10
+#define RFM_INT0_GPIO_Port GPIOA
+#define RFM_INT0_EXTI_IRQn EXTI15_10_IRQn
 #define SWDIO_Pin GPIO_PIN_13
 #define SWDIO_GPIO_Port GPIOA
 #define SWCLK_Pin GPIO_PIN_14
@@ -71,8 +77,9 @@ void Error_Handler(void);
 #define VCP_RX_GPIO_Port GPIOA
 #define LD3_Pin GPIO_PIN_3
 #define LD3_GPIO_Port GPIOB
-#define RFM_INT_Pin GPIO_PIN_5
-#define RFM_INT_GPIO_Port GPIOB
+#define RFM_INT5_Pin GPIO_PIN_6
+#define RFM_INT5_GPIO_Port GPIOB
+#define RFM_INT5_EXTI_IRQn EXTI9_5_IRQn
 
 /* USER CODE BEGIN Private defines */
 
