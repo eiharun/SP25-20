@@ -1,17 +1,24 @@
-22:52:29 **** Incremental Build of configuration Debug for project RFM95W_Tx ****
+20:35:29 **** Incremental Build of configuration Debug for project RFM95W_Tx ****
 make -j16 all 
-arm-none-eabi-gcc "../Core/Src/main.c" -mcpu=cortex-m4 -std=gnu11 -g3 -DDEBUG -DUSE_HAL_DRIVER -DSTM32L412xx -c -I../Core/Inc -I../Drivers/STM32L4xx_HAL_Driver/Inc -I../Drivers/STM32L4xx_HAL_Driver/Inc/Legacy -I../Drivers/CMSIS/Device/ST/STM32L4xx/Include -I../Drivers/CMSIS/Include -I../Drivers/RFM95W_HAL_Driver -O0 -ffunction-sections -fdata-sections -Wall -fstack-usage -fcyclomatic-complexity -MMD -MP -MF"Core/Src/main.d" -MT"Core/Src/main.o" --specs=nano.specs -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb -o "Core/Src/main.o"
+arm-none-eabi-gcc "../Drivers/RFM95W_HAL_Driver/rfm95.c" -mcpu=cortex-m4 -std=gnu11 -g3 -DDEBUG -DUSE_HAL_DRIVER -DSTM32L412xx -c -I../Core/Inc -I../Drivers/STM32L4xx_HAL_Driver/Inc -I../Drivers/STM32L4xx_HAL_Driver/Inc/Legacy -I../Drivers/CMSIS/Device/ST/STM32L4xx/Include -I../Drivers/CMSIS/Include -I../Drivers/RFM95W_HAL_Driver -O0 -ffunction-sections -fdata-sections -Wall -fstack-usage -fcyclomatic-complexity -MMD -MP -MF"Drivers/RFM95W_HAL_Driver/rfm95.d" -MT"Drivers/RFM95W_HAL_Driver/rfm95.o" --specs=nano.specs -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb -o "Drivers/RFM95W_HAL_Driver/rfm95.o"
+../Drivers/RFM95W_HAL_Driver/rfm95.c: In function 'process_mac_commands':
+../Drivers/RFM95W_HAL_Driver/rfm95.c:314:42: warning: unused variable 'frequency' [-Wunused-variable]
+  314 |                                 uint32_t frequency = (frequency_lsb | (frequency_msb << 8) | (frequency_hsb << 16)) * 100;
+      |                                          ^~~~~~~~~
+../Drivers/RFM95W_HAL_Driver/rfm95.c:310:41: warning: unused variable 'dl_settings' [-Wunused-variable]
+  310 |                                 uint8_t dl_settings = frame_payload[index++];
+      |                                         ^~~~~~~~~~~
 arm-none-eabi-gcc -o "RFM95W_Tx.elf" @"objects.list"   -mcpu=cortex-m4 -T"C:\Users\harun\OneDrive\Documents\School\VT\HAB\HAB_STM32\RFM95W_Tx\STM32L412KBUX_FLASH.ld" --specs=nosys.specs -Wl,-Map="RFM95W_Tx.map" -Wl,--gc-sections -static --specs=nano.specs -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb -Wl,--start-group -lc -lm -Wl,--end-group
 Finished building target: RFM95W_Tx.elf
  
 arm-none-eabi-size  RFM95W_Tx.elf 
 arm-none-eabi-objdump -h -S RFM95W_Tx.elf  > "RFM95W_Tx.list"
    text	   data	    bss	    dec	    hex	filename
-  25732	    544	   2024	  28300	   6e8c	RFM95W_Tx.elf
+  29580	    544	   2160	  32284	   7e1c	RFM95W_Tx.elf
 Finished building: default.size.stdout
  
 Finished building: RFM95W_Tx.list
  
 
-22:52:30 Build Finished. 0 errors, 0 warnings. (took 1s.38ms)
+20:35:30 Build Finished. 0 errors, 2 warnings. (took 974ms)
 
