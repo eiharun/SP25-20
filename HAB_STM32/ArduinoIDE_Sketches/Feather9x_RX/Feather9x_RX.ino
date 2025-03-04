@@ -79,11 +79,13 @@
 #define RFM95_CS  10  // "B"
 #define RFM95_INT  6  // "D"
 */
-#define RFM95_RST 2  // "A"
-#define RFM95_CS  3  // "B"
-#define RFM95_INT 0  // "D"
+#define RFM95_RST 4  // 
+#define RFM95_CS  3  // 
+#define RFM95_INT 5  // 
 
-// Change to 434.0 schedUSE_TIMING_ERROR_DETECTION_DEADLINEor other frequency, must match RX's freq!
+#define TX_LED      A5
+#define RX_LED      A6
+// Change to 434.0 or other frequency, must match RX's freq!
 #define RF95_FREQ 915.0
 
 // Singleton instance of the radio driver
@@ -92,6 +94,8 @@ RH_RF95 rf95(RFM95_CS, RFM95_INT);
 void setup() {
   pinMode(LED_BUILTIN, OUTPUT);
   pinMode(RFM95_RST, OUTPUT);
+  pinMode(TX_LED, OUTPUT);
+  pinMode(RX_LED, OUTPUT);
   digitalWrite(RFM95_RST, HIGH);
 
   Serial.begin(115200);
@@ -135,21 +139,25 @@ void loop() {
     uint8_t len = sizeof(buf); 
 
     if (rf95.recv(buf, &len)) {
-      digitalWrite(LED_BUILTIN, HIGH);
+      digitalWrite(RX_LED, HIGH);
       RH_RF95::printBuffer("Received: ", buf, len);
       Serial.print("Got: ");
       Serial.println((char*)buf);
        Serial.print("RSSI: ");
       Serial.println(rf95.lastRssi(), DEC);
+      delay(50);
+      digitalWrite(RX_LED, LOW);
 
       // Send a reply
       uint8_t data[] = "And hello back to you";
+      digitalWrite(TX_LED, HIGH);
       rf95.send(data, sizeof(data));
       rf95.waitPacketSent();
       Serial.println("Sent a reply");
-      digitalWrite(LED_BUILTIN, LOW);
     } else {
       Serial.println("Receive failed");
     }
+    delay(50);
+    digitalWrite(TX_LED, LOW);
   }
 }

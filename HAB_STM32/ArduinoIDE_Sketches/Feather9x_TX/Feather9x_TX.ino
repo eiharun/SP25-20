@@ -79,22 +79,28 @@
 #define RFM95_CS  10  // "B"
 #define RFM95_INT  6  // "D"
 */
-#define RFM95_CS    4  //
-#define RFM95_INT   3  //
-#define RFM95_RST   2  // "A"
+#define RFM95_RST 4  // 
+#define RFM95_CS  3  // 
+#define RFM95_INT 5  // 
+#define TX_LED      A5
+#define RX_LED      A6
 // Change to 434.0 or other frequency, must match RX's freq!
 #define RF95_FREQ 915.0
 
 // Singleton instance of the radio driver
 RH_RF95 rf95(RFM95_CS, RFM95_INT);
+unsigned long latencies[255];
 
 void setup() {
   pinMode(RFM95_RST, OUTPUT);
+  pinMode(TX_LED, OUTPUT);
+  pinMode(RX_LED, OUTPUT);
   digitalWrite(RFM95_RST, HIGH);
 
   Serial.begin(115200);
   while (!Serial) delay(1);
   delay(100);
+
 
   Serial.println("Feather LoRa TX Test!");
 
@@ -138,29 +144,51 @@ void loop() {
   radiopacket[19] = 0;
 
   Serial.println("Sending...");
+  digitalWrite(TX_LED, HIGH);
   delay(10);
   rf95.send((uint8_t *)radiopacket, 20);
+
 
   Serial.println("Waiting for packet to complete...");
   delay(10);
   rf95.waitPacketSent();
+  unsigned long start = millis();
+
+  digitalWrite(TX_LED, LOW);
   // Now wait for a reply
   uint8_t buf[RH_RF95_MAX_MESSAGE_LEN];
   uint8_t len = sizeof(buf);
 
   Serial.println("Waiting for reply...");
   if (rf95.waitAvailableTimeout(1000)) {
+    unsigned long end = millis();
     // Should be a reply message for us now
     if (rf95.recv(buf, &len)) {
+      digitalWrite(RX_LED, HIGH);
       Serial.print("Got reply: ");
       Serial.println((char*)buf);
       Serial.print("RSSI: ");
       Serial.println(rf95.lastRssi(), DEC);
+      Serial.print("Latency: ");
+      latencies[packetnum%255] = end-start;
+      Serial.println(end-start);
+      if (packetnum >= 255){
+        float sum=0;
+        for(int i=0; i<255; i++){
+          sum += latencies[i];
+        }
+        float average=sum/255;
+        
+        Serial.print("Average Latency past 255 messages: ");
+        Serial.println(average);
+      }
     } else {
       Serial.println("Receive failed");
     }
   } else {
     Serial.println("No reply, is there a listener around?");
   }
+  delay(50);
+  digitalWrite(RX_LED, LOW);
 
 }
