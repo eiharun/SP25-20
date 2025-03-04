@@ -18,6 +18,7 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+#include "fatfs.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
@@ -43,26 +44,11 @@
 /* Private variables ---------------------------------------------------------*/
 SPI_HandleTypeDef hspi1;
 
+UART_HandleTypeDef huart1;
 UART_HandleTypeDef huart2;
 
 /* USER CODE BEGIN PV */
-rfm95_handle_t rfm95_handle = {
-		.spi_handle = &hspi1,
-		.nss_port = RFM_CS_GPIO_Port,
-		.nss_pin = RFM_CS_Pin,
-		.nrst_port = RFM_RST_GPIO_Port,
-		.nrst_pin = RFM_RST_Pin,
-		.device_address = {
-			0x00, 0x00, 0x00, 0x00
-		},
-		.application_session_key = {
-			0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
-		},
-		.network_session_key = {
-			0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
-		},
-		.receive_mode = RFM95_RECEIVE_MODE_NONE
-};
+
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -70,6 +56,7 @@ void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_SPI1_Init(void);
 static void MX_USART2_UART_Init(void);
+static void MX_USART1_UART_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -99,7 +86,7 @@ int main(void)
 {
 
   /* USER CODE BEGIN 1 */
-
+	uint8_t LoRa_buff[RH_RF95_FIFO_SIZE] = {0};
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
@@ -122,26 +109,13 @@ int main(void)
   MX_GPIO_Init();
   MX_SPI1_Init();
   MX_USART2_UART_Init();
+  MX_USART1_UART_Init();
+  MX_FATFS_Init();
   /* USER CODE BEGIN 2 */
-	if (!rfm95_init(&rfm95_handle)) {
-		printf("RFM95 init failed\n");
+	if(!RF95_Init()){
+		printf("RFM95 Init Failed\n");
 	}
-	printf("RFM95 init success\n");
-
-	uint8_t data_packet[] = {
-		0x01, 0x02, 0x03, 0x4
-	};
-	HAL_GPIO_WritePin(LD3_GPIO_Port, LD3_Pin, GPIO_PIN_RESET);
-	if (!rfm95_send_receive_cycle(&rfm95_handle, data_packet, sizeof(data_packet))) {
-		printf("RFM95 send failed\n");
-		HAL_GPIO_WritePin(LD3_GPIO_Port, LD3_Pin, GPIO_PIN_SET);
-
-	} else {
-		printf("RFM95 send success\n");
-		HAL_GPIO_WritePin(LD3_GPIO_Port, LD3_Pin, GPIO_PIN_SET);
-		HAL_Delay(200);
-		HAL_GPIO_WritePin(LD3_GPIO_Port, LD3_Pin, GPIO_PIN_RESET);
-	}
+	printf("RFM95 Init Success\n");
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -149,6 +123,13 @@ int main(void)
   while (1)
   {
     /* USER CODE END WHILE */
+		HAL_GPIO_WritePin(TX_LED_GPIO_Port, TX_LED_Pin, GPIO_PIN_SET);
+  	strcpy((char*)LoRa_buff, "Test\n");
+  	RF95_send(LoRa_buff);
+		HAL_Delay(1000);
+		HAL_GPIO_WritePin(TX_LED_GPIO_Port, TX_LED_Pin, GPIO_PIN_RESET);
+		printf("Sent data\r\n");
+		HAL_Delay(1000);
 
     /* USER CODE BEGIN 3 */
   }
@@ -240,6 +221,41 @@ static void MX_SPI1_Init(void)
 }
 
 /**
+  * @brief USART1 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_USART1_UART_Init(void)
+{
+
+  /* USER CODE BEGIN USART1_Init 0 */
+
+  /* USER CODE END USART1_Init 0 */
+
+  /* USER CODE BEGIN USART1_Init 1 */
+
+  /* USER CODE END USART1_Init 1 */
+  huart1.Instance = USART1;
+  huart1.Init.BaudRate = 115200;
+  huart1.Init.WordLength = UART_WORDLENGTH_8B;
+  huart1.Init.StopBits = UART_STOPBITS_1;
+  huart1.Init.Parity = UART_PARITY_NONE;
+  huart1.Init.Mode = UART_MODE_TX_RX;
+  huart1.Init.HwFlowCtl = UART_HWCONTROL_NONE;
+  huart1.Init.OverSampling = UART_OVERSAMPLING_16;
+  huart1.Init.OneBitSampling = UART_ONE_BIT_SAMPLE_DISABLE;
+  huart1.AdvancedInit.AdvFeatureInit = UART_ADVFEATURE_NO_INIT;
+  if (HAL_UART_Init(&huart1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN USART1_Init 2 */
+
+  /* USER CODE END USART1_Init 2 */
+
+}
+
+/**
   * @brief USART2 Initialization Function
   * @param None
   * @retval None
@@ -291,59 +307,44 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOB_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOA, RFM_CS_Pin|RFM_RST_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOA, TX_LED_Pin|RX_LED_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(LD3_GPIO_Port, LD3_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOB, RFM_CS_Pin|RFM_RST_Pin, GPIO_PIN_RESET);
+
+  /*Configure GPIO pins : TX_LED_Pin RX_LED_Pin */
+  GPIO_InitStruct.Pin = TX_LED_Pin|RX_LED_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_PULLUP;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
   /*Configure GPIO pins : RFM_CS_Pin RFM_RST_Pin */
   GPIO_InitStruct.Pin = RFM_CS_Pin|RFM_RST_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : RFM_INT1_Pin RFM_INT0_Pin */
-  GPIO_InitStruct.Pin = RFM_INT1_Pin|RFM_INT0_Pin;
+  /*Configure GPIO pin : RFM_INT0_Pin */
+  GPIO_InitStruct.Pin = RFM_INT0_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
-  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
-
-  /*Configure GPIO pin : LD3_Pin */
-  GPIO_InitStruct.Pin = LD3_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(LD3_GPIO_Port, &GPIO_InitStruct);
-
-  /*Configure GPIO pin : RFM_INT5_Pin */
-  GPIO_InitStruct.Pin = RFM_INT5_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  HAL_GPIO_Init(RFM_INT5_GPIO_Port, &GPIO_InitStruct);
+  HAL_GPIO_Init(RFM_INT0_GPIO_Port, &GPIO_InitStruct);
 
   /* EXTI interrupt init*/
   HAL_NVIC_SetPriority(EXTI9_5_IRQn, 0, 0);
   HAL_NVIC_EnableIRQ(EXTI9_5_IRQn);
-
-  HAL_NVIC_SetPriority(EXTI15_10_IRQn, 0, 0);
-  HAL_NVIC_EnableIRQ(EXTI15_10_IRQn);
 
 /* USER CODE BEGIN MX_GPIO_Init_2 */
 /* USER CODE END MX_GPIO_Init_2 */
 }
 
 /* USER CODE BEGIN 4 */
-void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
-{
-    if (GPIO_Pin == RFM_INT0_Pin) {
-        rfm95_on_interrupt(&rfm95_handle, RFM95_INTERRUPT_DIO0);
-    } else if (GPIO_Pin == RFM_INT1_Pin) {
-        rfm95_on_interrupt(&rfm95_handle, RFM95_INTERRUPT_DIO1);
-    } else if (GPIO_Pin == RFM_INT5_Pin) {
-        rfm95_on_interrupt(&rfm95_handle, RFM95_INTERRUPT_DIO5);
-    }
-}
+//void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
+//{
+//
+//}
 /* USER CODE END 4 */
 
 /**
