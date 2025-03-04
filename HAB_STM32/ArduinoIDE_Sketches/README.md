@@ -10,7 +10,7 @@
 | MISO   | D12   |
 | MOSI   | D11   |
 | CS     | D3    |
-| RST    | D2    |
+| RST    | D4    |
 | G1     | NC    |
 | G2     | NC    |
 | G3     | NC    |
@@ -19,7 +19,11 @@
 
 To program:
 
+Follow instructions [here](https://github.com/stm32duino/Arduino_Core_STM32)
+
 Boards Manager -> STM32 MCU based boards -> Install
+
+Install [STM32CubeProgrammer](https://www.st.com/en/development-tools/stm32cubeprog.html)
 
 Connect Nucleo board and select Nucleo32 and L412KB (or Nucleo L432KC) if it gives you the option
 
