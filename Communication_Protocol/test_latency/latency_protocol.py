@@ -28,13 +28,17 @@ try:
         while True:
             recv = ser.readline().decode('utf-8').strip()
             if recv:
+                if "Type data" in recv:
+                    send=input("Type Y to send: ")
+                    if send == "Y":
+                        ser.write(b"A\n")
                 now = datetime.now()
                 f.write(now.strftime("%Y-%m-%d %H:%M:%S.%f") + ", " + recv + "\n")
                 print(recv)
                 if "Sending..." in recv:
                     print(time.time())
                     start = time.time()
-                if "And hello back to you" in recv:
+                if "Sending SYN/ACK..." in recv:
                     print(time.time())
                     end = time.time()
                     latencies.append(end-start)
