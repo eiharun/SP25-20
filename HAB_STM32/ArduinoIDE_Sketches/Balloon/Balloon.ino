@@ -1,15 +1,29 @@
 #include <SPI.h>
 #include <RH_RF95.h>
 
-#define RFM95_RST 4  
-#define RFM95_CS  3  
-#define RFM95_INT 0  
-#define TX_LED      A5
-#define RX_LED      A6
+
+#define RFM95_RST 4  // 
+#define RFM95_CS  3  // 
+#if defined(__AVR_ATmega328P__)
+  #define RFM95_INT 2  // 
+#else
+  #define RFM95_INT 0  // 
+#endif
+
+#if defined(__AVR_ATmega328P__)
+  #define TX_LED      8
+  #define RX_LED      7
+#else
+  #define TX_LED      A5
+  #define RX_LED      A6
+#endif
 
 #define RF95_FREQ 915.0
-#define RX_TIMEOUT 5000
+#define AWAIT_TIMEOUT 15000 /* Time in MS to wait after IDLE packet was sent to recieve a reply. MAX is 65535 */
 
+enum State {IDLE, AWAIT, RECV, AWAKE};
+
+State current_state;
 // Singleton instance of the radio driver
 RH_RF95 rf95(RFM95_CS, RFM95_INT);
 
@@ -52,99 +66,88 @@ void setup() {
   // If you are using RFM95/96/97/98 modules which uses the PA_BOOST transmitter pin, then
   // you can set transmitter powers from 5 to 23 dBm:
   rf95.setTxPower(23, false);
-  rf95.setSpreadingFactor(7);
+  rf95.setSpreadingFactor(12);
   // rf95.setSignalBandwidth(12500);
 
   if (!rf95.printRegisters()) {
     Serial.println("printRegisters failed");
     while (1);
   }
-  radiopacket[0] = 1;
-  radiopacket[1] = 0;
-  radiopacket[2] = 0;
-  radiopacket[3] = 194;
-  radiopacket[6] = 255;
+  current_state = IDLE;
 }
-
-int16_t packetnum = 0;  // packet counter, we increment per xmission
-bool resend = false;
-bool gotsyn = false;
-bool gotsynack = false;
+uint8_t recv_buf[RH_RF95_MAX_MESSAGE_LEN];
+uint8_t recv_buf_len = sizeof(recv_buf);
 
 void loop() {
-  // delay(1000); // Wait 1 second between transmits, could also 'sleep' here!
-
-  /*Simplified Packet format: 
-   * First Byte:  2 SYN; 1 ACK; 3 SYN/ACK
-   * Second Byte: Seq #
-   * Third Byte:  Ack #
-   * Fourth Byte: Tag (i.e. command #) 0 IDLE; 1 CUTDOWN; 64 OPEN (x seconds); 194 TEST
-   * Fifth Byte:  Data Length (n)
-   * Sixth Byte:  Checksum (for now disable checking)
-   * 6+nth Byte:  Data Payload 
-   */
-  
-
-  if(rf95.waitAvailableTimeout(RX_TIMEOUT)){
-    uint8_t buf[RH_RF95_MAX_MESSAGE_LEN];
-    uint8_t len = sizeof(buf); 
-
-    if (rf95.recv(buf, &len)) {
+  switch(current_state){
+    case IDLE:
+      /* Send IDLE packet, change state to AWAIT */
+      Serial.println("IDLE STATE");
+      strcpy(radiopacket, "IDLE");
+      radiopacket[4]=0;
+      rf95.send(radiopacket, sizeof(radiopacket));
+      current_state = AWAIT;
+      break;
+    case AWAIT:
+      /* Wait 'AWAIT_TIMEOUT' ms for reply
+       * If no reply, change state to IDLE, sleep for 'y' seconds/minutes
+       * If reply, change state to RECV
+       */
+      Serial.println("AWAIT STATE");
+      if (rf95.waitAvailableTimeout(AWAIT_TIMEOUT)) {
+        if (rf95.recv(recv_buf, &recv_buf_len)) {
+          current_state = RECV;
+        }
+        else{
+          /* Failed to recv (err) */
+        }
+      }
+      else{
+        current_state = IDLE;
+        /* GO TO SLEEP */ /* TODO:
+                           * In sleep mode set up interrupt when any packet is recieved
+                           * to wake up and change state to RECV
+                           */
+        Serial.println("SLEEP"); 
+        delay(5000); //artificially sleep
+      }
+      break;
+    case RECV:
+      /* Process packet, send ACK (possibly with telemetry)
+       * Change state to AWAKE 
+       */
+      Serial.println("RECV STATE");
+      /* Do something with recv_buf */
       digitalWrite(RX_LED, HIGH);
-      RH_RF95::printBuffer("Received: ", buf, len);
-       Serial.print("RSSI: ");
-      Serial.println(rf95.lastRssi(), DEC);
-      delay(50);
+      Serial.print("Got: "); Serial.println((char*)recv_buf);
+      delay(400);
       digitalWrite(RX_LED, LOW);
-    } else {
-      Serial.println("Receive failed");
-    }
 
-    if (buf[0]==2){
-      gotsyn = true;
-      char data[10] = "ACKwtele";
-      size_t data_len;
-      
-      radiopacket[4] = (char)data_len;
-      memcpy(radiopacket + 6, data, 10);
-
-      digitalWrite(TX_LED, HIGH);
-      rf95.send((uint8_t *)radiopacket, 20);
-      rf95.waitPacketSent();
-      Serial.println("Sent ACK");
-      digitalWrite(TX_LED, LOW);
-    } else if (buf[0]==3){
-      gotsynack = true;
-      Serial.println("Recieved SYN/ACK");
-    }
-
-  }
-  else{
-    if(gotsyn && !gotsynack){
-      /*Resend ack*/
-      Serial.println("Missed SYN/ACK");
-      digitalWrite(TX_LED, HIGH);
-      radiopacket[1]++;
-      rf95.send((uint8_t *)radiopacket, 20);
-      rf95.waitPacketSent();
-      Serial.println("Resent ACK");
-      digitalWrite(TX_LED, LOW);
-    }
-  }
-  if(gotsyn && gotsynack){
-    digitalWrite(TX_LED, HIGH);
-    digitalWrite(RX_LED, HIGH);
-    delay(500);
-    gotsyn = false;
-    gotsynack = false;
-    digitalWrite(TX_LED, LOW);
-    digitalWrite(RX_LED, LOW);
-    delay(500);
-    digitalWrite(TX_LED, HIGH);
-    digitalWrite(RX_LED, HIGH);
-    delay(500);
-    digitalWrite(TX_LED, LOW);
-    digitalWrite(RX_LED, LOW);
+      memset(radiopacket, 0, sizeof(radiopacket));
+      strcpy(radiopacket, "ACK + TELEMETRY");
+      rf95.send(radiopacket, sizeof(radiopacket));
+      memset(recv_buf, 0, recv_buf_len); /* Clear buffer */
+      current_state = AWAKE;
+      break;
+    case AWAKE:
+      /* If inactivity (nothing recieved) after z minutes, go back to IDLE state 
+       *    (for now reset to go back to idle)
+       * Continuous recieving mode
+       * If something is recieved, change state to RECV
+       */
+      if(rf95.available()){
+        Serial.println("AWAKE STATE");
+        if (rf95.recv(recv_buf, &recv_buf_len)) {
+          current_state = RECV;
+        }
+        else{
+          /* Failed to recv (err) */
+        }
+      }
+      break;
+    default:
+      /* Should never get here */
+      break;
   }
 
 }

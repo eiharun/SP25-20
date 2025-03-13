@@ -77,7 +77,7 @@ void loop() {
     // Should be a message for us now
     uint8_t buf[RH_RF95_MAX_MESSAGE_LEN];
     uint8_t len = sizeof(buf); 
-
+    memset(buf, 0, sizeof(buf));
     if (rf95.recv(buf, &len)) {
       digitalWrite(RX_LED, HIGH);
       RH_RF95::printBuffer("Received: ", buf, len);
@@ -87,11 +87,11 @@ void loop() {
       Serial.println(rf95.lastRssi(), DEC);
       delay(50);
       digitalWrite(RX_LED, LOW);
-
       // Send a reply
-      uint8_t data[] = "And hello back to you";
+      uint8_t data[RH_RF95_MAX_MESSAGE_LEN] = "ACK: ";
+      strcpy(data+5, buf);
       digitalWrite(TX_LED, HIGH);
-      rf95.send(data, sizeof(data));
+      rf95.send(data, strlen(data));
       rf95.waitPacketSent();
       Serial.println("Sent a reply");
     } else {
@@ -100,7 +100,6 @@ void loop() {
     delay(50);
     digitalWrite(TX_LED, LOW);
     delay(50);
-
     digitalWrite(TX_LED, HIGH);
     digitalWrite(RX_LED, HIGH);
     delay(400);

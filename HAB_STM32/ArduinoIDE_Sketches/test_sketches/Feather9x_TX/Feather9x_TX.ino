@@ -11,9 +11,19 @@
 
 #define RFM95_RST 4  // 
 #define RFM95_CS  3  // 
-#define RFM95_INT 0  // 
-#define TX_LED      A5
-#define RX_LED      A6
+#if defined(__AVR_ATmega328P__)
+  #define RFM95_INT 2  // 
+#else
+  #define RFM95_INT 0  // 
+#endif
+
+#if defined(__AVR_ATmega328P__)
+  #define TX_LED      8
+  #define RX_LED      7
+#else
+  #define TX_LED      A5
+  #define RX_LED      A6
+#endif
 // Change to 434.0 or other frequency, must match RX's freq!
 #define RF95_FREQ 915.0
 
@@ -22,6 +32,7 @@ RH_RF95 rf95(RFM95_CS, RFM95_INT);
 unsigned long latencies[255];
 
 void setup() {
+  digitalWrite(TX_LED, HIGH);
   pinMode(RFM95_RST, OUTPUT);
   pinMode(TX_LED, OUTPUT);
   pinMode(RX_LED, OUTPUT);
@@ -63,6 +74,7 @@ void setup() {
   // rf95.setSignalBandwidth(12500);
   #define RX_TIMEOUT 2000
   #define DELAY_TX 1500
+  digitalWrite(TX_LED, LOW);
 }
 
 int16_t packetnum = 0;  // packet counter, we increment per xmission
