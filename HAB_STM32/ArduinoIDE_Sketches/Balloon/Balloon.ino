@@ -1,21 +1,24 @@
 #include <SPI.h>
 #include <RH_RF95.h>
+#include <SD.h>
+#include <SoftwareSerial.h>
+#include <TinyGPS.h>
 
 
-#define RFM95_RST 4  // 
-#define RFM95_CS  3  // 
+#define RFM95_RST     4  
+#define RFM95_CS      3   
 #if defined(__AVR_ATmega328P__)
-  #define RFM95_INT 2  // 
-#else
-  #define RFM95_INT 0  // 
-#endif
-
-#if defined(__AVR_ATmega328P__)
+  #define RFM95_INT   2   
   #define TX_LED      8
   #define RX_LED      7
+  #define SD_CS       6
+  #define GPS_TX      5
+  #define GPS_RX      9
 #else
+  #define RFM95_INT   0  
   #define TX_LED      A5
   #define RX_LED      A6
+  #define SD_CS       6
 #endif
 
 #define RF95_FREQ 915.0
@@ -26,8 +29,11 @@ enum State {IDLE, AWAIT, RECV, AWAKE};
 State current_state;
 // Singleton instance of the radio driver
 RH_RF95 rf95(RFM95_CS, RFM95_INT);
+// TinyGPS gps;
+// SoftwareSerial ss(GPS_RX, GPS_TX);
 
 char radiopacket[20] = "";
+File logFile;
 
 void setup() {
   pinMode(RFM95_RST, OUTPUT);
@@ -39,6 +45,9 @@ void setup() {
   while (!Serial) delay(1);
   delay(100);
 
+  /* Start GPS Software Serial */
+  // ss.begin(4800);
+
   Serial.println("LoRa RX Test!");
 
   // manual reset
@@ -47,24 +56,29 @@ void setup() {
   digitalWrite(RFM95_RST, HIGH);
   delay(10);
 
+  /* Init RFM95 */
   while (!rf95.init()) {
     Serial.println("LoRa radio init failed");
     while (1);
   }
   Serial.println("LoRa radio init OK!");
 
-  // Defaults after init are 434.0MHz, modulation GFSK_Rb250Fd250, +13dbM
+  /* Init SD Card */
+  Serial.print("Initializing SD card...");
+  // see if the card is present and can be initialized:
+  if (!SD.begin(chipSelect)) {
+    Serial.println("Card failed, or not present");
+    // don't do anything more:
+    while (1);
+  }
+  Serial.println("Card initialized.");
+
   if (!rf95.setFrequency(RF95_FREQ)) {
-    Serial.println("setFrequency failed");
+    Serial.println("setFrequency failed"); 
     while (1);
   }
   Serial.print("Set Freq to: "); Serial.println(RF95_FREQ);
 
-  // Defaults after init are 434.0MHz, 13dBm, Bw = 125 kHz, Cr = 4/5, Sf = 128chips/symbol, CRC on
-
-  // The default transmitter power is 13dBm, using PA_BOOST.
-  // If you are using RFM95/96/97/98 modules which uses the PA_BOOST transmitter pin, then
-  // you can set transmitter powers from 5 to 23 dBm:
   rf95.setTxPower(23, false);
   rf95.setSpreadingFactor(12);
   // rf95.setSignalBandwidth(12500);
