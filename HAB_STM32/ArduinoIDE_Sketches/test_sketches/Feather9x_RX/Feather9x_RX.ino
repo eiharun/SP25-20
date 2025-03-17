@@ -8,6 +8,7 @@
 
 #include <SPI.h>
 #include <RH_RF95.h>
+#include<Servo.h>
 
 #define RFM95_RST 4  // 
 #define RFM95_CS  3  // 
@@ -29,6 +30,9 @@
 
 // Singleton instance of the radio driver
 RH_RF95 rf95(RFM95_CS, RFM95_INT);
+
+// instantiate servo object
+Servo servo;
 
 void setup() {
   pinMode(LED_BUILTIN, OUTPUT);
@@ -70,6 +74,19 @@ void setup() {
   rf95.setTxPower(23, false);
   rf95.setSpreadingFactor(12);
   // rf95.setSignalBandwidth(12500);
+
+  // new servo code
+  /*
+   * min (optional): the pulse width, in microseconds, corresponding to the minimum (0 degree) angle on the servo (defaults to 544)
+   * max (optional): the pulse width, in microseconds, corresponding to the maximum (180 degree) angle on the servo (defaults to 2400)
+   */
+  servo.attach(PIN) // REPLACE WITH PIN WE USE, servo.attach(pin, min, max) is an alternative
+  if (!servo.attached()) {
+    Serial.print("Servo motor not connected");
+  }
+  Serial.print("Servo motor connected");
+  
+  servo.write(STARTING_ANGLE) // REPACE WITH STARTING ANGLE OF SERVO MOTOR
 }
 
 void loop() {
@@ -94,6 +111,22 @@ void loop() {
       rf95.send(data, strlen(data));
       rf95.waitPacketSent();
       Serial.println("Sent a reply");
+
+      // Josh's Code for servo motor operation
+      String message = (char*)buf;
+      String command;
+      for (int i = 0; i < 4 ; i++){
+        command += message[i];
+      }
+      if (command == "vent"){
+        uint8_t dur = message[message.length()];
+        // open vent via servo
+        // servo.write(angle)
+        servo.write(60); // CHANGE ANGLE IF NEEDED        
+        delay(dur); // allow time for servo movement
+        // close vent
+        servo.write(0);
+      }
     } else {
       Serial.println("Receive failed");
     }
