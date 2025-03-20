@@ -114,11 +114,8 @@ void loop() {
 
       // Josh's Code for servo motor operation
       String message = (char*)buf;
-      String command;
-      for (int i = 0; i < 4 ; i++){
-        command += message[i];
-      }
-      if (command == "vent"){
+      
+      if (messgage[0] == 0x5){
         uint8_t dur = message[message.length()];
         // open vent via servo
         // servo.write(angle)
