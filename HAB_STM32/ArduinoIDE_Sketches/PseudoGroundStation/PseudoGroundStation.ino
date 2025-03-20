@@ -63,16 +63,11 @@ void setup() {
     while (1);
   }
 
-  radiopacket[0] = 2;
-  radiopacket[1] = 0;
-  radiopacket[2] = 0;
-  radiopacket[3] = 194;
-  radiopacket[6] = 255;
-
 }
 
 int16_t packetnum = 0;  // packet counter, we increment per xmission
 bool resend = false;
+bool valid_cmd = false;
 
 void loop() {
   delay(1000);                        // Wait 1 second between transmits, could also 'sleep' here!
@@ -94,23 +89,10 @@ void loop() {
       } else {
         Serial.println("Receive failed");
       }
-      if(buf[0]==1){
-        radiopacket[7] = 0;
-        radiopacket[0] = 3;
-        radiopacket[2] = buf[3]+1;
-
-        Serial.println("Sending SYN/ACK...");
-        digitalWrite(TX_LED, HIGH);
-        delay(10);
-        rf95.send((uint8_t *)radiopacket, 20);
-
-        // Serial.println("Waiting for packet to complete...");
-        delay(10);
-        rf95.waitPacketSent();
-      }
+      
     } 
   }
-  /*Simplified Packet format: 
+  /*Simplified Packet format: DEPRICATED (UTILIZE RADIOHEAD PACKET HEADERS)
    * First Byte:  2 SYN; 1 ACK; 3 SYN/ACK
    * Second Byte: Seq #
    * Third Byte:  Ack #
@@ -119,99 +101,77 @@ void loop() {
    * Sixth Byte:  Checksum (for now disable checking)
    * 6+nth Byte:  Data Payload 
    */
-  char data[10]="TEST";
-  int data_len=4;
-  // while (Serial.available()) {
-  // }
-  Serial.println("Sending...");
-  unsigned long start = millis();
-  
-  radiopacket[4] = (char)data_len;
-  memcpy(radiopacket + 6, data, 10);
-  radiopacket[0] = 2;
-  radiopacket[19] = 0;
-
-  digitalWrite(TX_LED, HIGH);
-  delay(10);
-  rf95.send((uint8_t *)radiopacket, 20);
-
-  // Serial.println("Waiting for packet to complete...");
-  delay(10);
-  rf95.waitPacketSent();
-  
-
-  digitalWrite(TX_LED, LOW);
-  // Now wait for a reply
-  uint8_t buf[RH_RF95_MAX_MESSAGE_LEN];
-  uint8_t len = sizeof(buf);
-  Serial.println("Waiting for reply ACK...");
-  if (rf95.waitAvailableTimeout(RX_TIMEOUT)) {
-    // Should be a reply message for us now
-    if (rf95.recv(buf, &len)) {
-      digitalWrite(RX_LED, HIGH);
-      RH_RF95::printBuffer("Received: ", buf, len);
-      Serial.print("RSSI: ");
-      Serial.println(rf95.lastRssi(), DEC);
-    } else {
-      Serial.println("Receive failed");
-    }
-  } else {
-    Serial.println("No reply, resending [TODO]");
-    resend = true;
+  uint8_t* data[10];
+  memset(data,0,10);
+  int data_len=2;
+  char* sbstr_ptr = strstr(input,"OPEN");
+  if(sbstr_ptr!=NULL){
+    data[0] = (uint8_t*)5;
+    data[1] = (uint8_t*)atoi((char*)input[sbstr_ptr-input]);
+    valid_cmd = true;
   }
-  digitalWrite(RX_LED, LOW);
-  delay(50);
-  if (!resend) {
-    radiopacket[7] = 0;
-    radiopacket[0] = 3;
-    radiopacket[2] = buf[3]+1;
-
-    Serial.println("Sending SYN/ACK...");
+  else{
+    data[0]=(uint8_t*)255;
+    valid_cmd = false;
+  }
+    if(valid_cmd){
+    Serial.println("Sending...");
+    unsigned long start = millis();
+    
+    // radiopacket[4] = (char)data_len;
+    memcpy(radiopacket, data, 10);
+    // radiopacket[0] = 2;
+    // radiopacket[19] = 0;
+    RH_RF95::printBuffer("Received: ", (uint8_t*)radiopacket, 10);
     digitalWrite(TX_LED, HIGH);
     delay(10);
-    rf95.send((uint8_t *)radiopacket, 20);
+    rf95.send((uint8_t *)radiopacket, 4);
 
     // Serial.println("Waiting for packet to complete...");
     delay(10);
     rf95.waitPacketSent();
-    digitalWrite(TX_LED, LOW);
-  }
-  else{
-    int cnt=0;
-    while(resend){
-      radiopacket[0] = 2;
-      radiopacket[1]++;
+    
 
-      Serial.print("Resending... #");
-      Serial.println(cnt);
+    digitalWrite(TX_LED, LOW);
+    // Now wait for a reply
+    uint8_t buf[RH_RF95_MAX_MESSAGE_LEN];
+    uint8_t len = sizeof(buf);
+    Serial.println("Waiting for reply ACK...");
+    if (rf95.waitAvailableTimeout(RX_TIMEOUT)) {
+      // Should be a reply message for us now
+      if (rf95.recv(buf, &len)) {
+        digitalWrite(RX_LED, HIGH);
+        RH_RF95::printBuffer("Received: ", buf, len);
+        Serial.print("RSSI: ");
+        Serial.println(rf95.lastRssi(), DEC);
+      } else {
+        Serial.println("Receive failed");
+      }
+    } else {
+      Serial.println("No reply, resending [TODO]");
+      resend = true;
+    }
+    digitalWrite(RX_LED, LOW);
+    delay(50);
+    if (!resend) {
+      Serial.println("Sending SYN/ACK...");
       digitalWrite(TX_LED, HIGH);
       delay(10);
-      rf95.send((uint8_t *)radiopacket, 20);
+      rf95.send((uint8_t *)radiopacket, 4);
 
       // Serial.println("Waiting for packet to complete...");
       delay(10);
       rf95.waitPacketSent();
       digitalWrite(TX_LED, LOW);
-      uint8_t buf[RH_RF95_MAX_MESSAGE_LEN];
-      uint8_t len = sizeof(buf);
-      Serial.println("Waiting for ACK resend...");
-      if (rf95.waitAvailableTimeout(RX_TIMEOUT)) {
-        // Should be a reply message for us now
-        if (rf95.recv(buf, &len)) {
-          digitalWrite(RX_LED, HIGH);
-          RH_RF95::printBuffer("Received: ", buf, len);
-          Serial.print("RSSI: ");
-          Serial.println(rf95.lastRssi(), DEC);
-        } else {
-          Serial.println("Receive failed");
-        }
-        digitalWrite(RX_LED, LOW);
+    }
+    else{
+      int cnt=0;
+      while(resend){
+        radiopacket[0] = 2;
+        radiopacket[1]++;
 
-        radiopacket[0] = 3;
-        radiopacket[2] = buf[3]+1;
-        radiopacket[7] = 0;
-
-        Serial.println("Sending SYN/ACK...");
+        Serial.print("Resending... #");
+        Serial.println(cnt);
         digitalWrite(TX_LED, HIGH);
         delay(10);
         rf95.send((uint8_t *)radiopacket, 20);
@@ -220,43 +180,75 @@ void loop() {
         delay(10);
         rf95.waitPacketSent();
         digitalWrite(TX_LED, LOW);
-        resend = false;
-      } else {
-        Serial.println("No reply, resending [TODO]");
-        resend = true;
+        uint8_t buf[RH_RF95_MAX_MESSAGE_LEN];
+        uint8_t len = sizeof(buf);
+        Serial.println("Waiting for ACK resend...");
+        if (rf95.waitAvailableTimeout(RX_TIMEOUT)) {
+          // Should be a reply message for us now
+          if (rf95.recv(buf, &len)) {
+            digitalWrite(RX_LED, HIGH);
+            RH_RF95::printBuffer("Received: ", buf, len);
+            Serial.print("RSSI: ");
+            Serial.println(rf95.lastRssi(), DEC);
+          } else {
+            Serial.println("Receive failed");
+          }
+          digitalWrite(RX_LED, LOW);
+
+          radiopacket[0] = 3;
+          radiopacket[2] = buf[3]+1;
+          radiopacket[7] = 0;
+
+          Serial.println("Sending SYN/ACK...");
+          digitalWrite(TX_LED, HIGH);
+          delay(10);
+          rf95.send((uint8_t *)radiopacket, 20);
+
+          // Serial.println("Waiting for packet to complete...");
+          delay(10);
+          rf95.waitPacketSent();
+          digitalWrite(TX_LED, LOW);
+          resend = false;
+        } else {
+          Serial.println("No reply, resending [TODO]");
+          resend = true;
+        }
+        if(cnt>=10){
+          break;
+        }
+        cnt++;
       }
-      if(cnt>=10){
-        break;
+      if(resend){
+        Serial.println("Exceeded retries");
       }
-      cnt++;
+      
     }
-    if(resend){
-      Serial.println("Exceeded retries");
+    unsigned long end = millis();
+
+
+
+
+
+    // /*Latency Calculation*/
+    float average;
+    Serial.print("Latency: ");
+    latencies[packetnum%255] = end-start;
+    Serial.print(end-start);
+    Serial.println("ms");
+    if (packetnum >= 255){
+      float sum=0;
+      for(int i=0; i<255; i++){
+        sum += latencies[i];
+      }
+      average=sum/255;
+      Serial.print("Average Latency: ");
+      Serial.println(average);
     }
-    
+
+    delay(50);
+    digitalWrite(RX_LED, LOW);
   }
-  unsigned long end = millis();
-
-
-
-
-
-  // /*Latency Calculation*/
-  float average;
-  Serial.print("Latency: ");
-  latencies[packetnum%255] = end-start;
-  Serial.print(end-start);
-  Serial.println("ms");
-  if (packetnum >= 255){
-    float sum=0;
-    for(int i=0; i<255; i++){
-      sum += latencies[i];
-    }
-    average=sum/255;
-    Serial.print("Average Latency: ");
-    Serial.println(average);
+  else{
+    Serial.println("Invalid Command");
   }
-
-  delay(50);
-  digitalWrite(RX_LED, LOW);
 }

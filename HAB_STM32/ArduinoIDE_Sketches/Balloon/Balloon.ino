@@ -6,30 +6,37 @@
 #include <Servo.h>
 
 bool writeLog(uint8_t* data);
+void interpret_command(uint8_t* recv_buf);
 
-#define RFM95_RST     2  
-#define RFM95_CS      3   
+
+#define RFM95_RST 2
+#define RFM95_CS 3
 #if defined(__AVR_ATmega328P__)
-  #define RFM95_INT   2   
-  #define TX_LED      8
-  #define RX_LED      7
-  #define SD_CS       6
-  #define GPS_TX      5
-  #define GPS_RX      9
+#define RFM95_INT 2
+#define TX_LED 8
+#define RX_LED 7
+#define SD_CS 6
+#define GPS_TX 5
+#define GPS_RX 9
 #else
-  #define RFM95_INT   0  
-  #define TX_LED      A5
-  #define RX_LED      A6
-  #define SD_CS       6
-  #define SERVO_PIN   9
-  #define GPS_TX      5
-  #define GPS_RX      4
+#define RFM95_INT 0
+#define TX_LED A5
+#define RX_LED A6
+#define SD_CS 6
+#define SERVO_PIN 9
+#define GPS_TX 5
+#define GPS_RX 4
 #endif
 
 #define RF95_FREQ 915.0
-#define AWAIT_TIMEOUT 5000//15000 /* Time in MS to wait after IDLE packet was sent to recieve a reply. MAX is 65535 */
+#define AWAIT_TIMEOUT 5000  //15000 /* Time in MS to wait after IDLE packet was sent to recieve a reply. MAX is 65535 */
 
-enum state_t {IDLE, AWAIT, RECV, AWAKE};
+#define SERVO_ANGLE 100
+
+enum state_t { IDLE,
+               AWAIT,
+               RECV,
+               AWAKE };
 state_t current_state;
 
 // Singleton instance of the radio driver
@@ -39,7 +46,7 @@ RH_RF95 rf95(RFM95_CS, RFM95_INT);
 #if defined(__AVR_ATmega328P__)
 SoftwareSerial ss(GPS_RX, GPS_TX);
 #else
-HardwareSerial Serial1(GPS_RX,GPS_TX); 
+HardwareSerial Serial1(GPS_RX, GPS_TX);
 #endif
 
 TinyGPS gps;
@@ -53,8 +60,16 @@ void setup() {
   pinMode(TX_LED, OUTPUT);
   pinMode(RX_LED, OUTPUT);
   digitalWrite(RFM95_RST, HIGH);
-  motor.attach(SERVO_PIN);
 
+  /* Attach Servo Motor */
+  motor.attach(SERVO_PIN);
+  if (!motor.attached()) {
+  Serial.print("Servo motor not connected");
+  }
+  Serial.print("Servo motor connected");
+  motor.write(0);/* Starting Angle */
+
+  /* Start Serial Output */
   Serial.begin(115200);
   while (!Serial) delay(1);
   delay(100);
@@ -77,7 +92,8 @@ void setup() {
   /* Init RFM95 */
   while (!rf95.init()) {
     Serial.println("LoRa radio init failed");
-    while (1);
+    while (1)
+      ;
   }
   Serial.println("LoRa radio init OK!");
 
@@ -87,15 +103,18 @@ void setup() {
   if (!SD.begin(SD_CS)) {
     Serial.println("Card failed, or not present");
     // don't do anything more:
-    while (1);
+    while (1)
+      ;
   }
   Serial.println("Card initialized.");
 
   if (!rf95.setFrequency(RF95_FREQ)) {
-    Serial.println("setFrequency failed"); 
-    while (1);
+    Serial.println("setFrequency failed");
+    while (1)
+      ;
   }
-  Serial.print("Set Freq to: "); Serial.println(RF95_FREQ);
+  Serial.print("Set Freq to: ");
+  Serial.println(RF95_FREQ);
 
   rf95.setTxPower(23, false);
   rf95.setSpreadingFactor(12);
@@ -103,34 +122,41 @@ void setup() {
 
   if (!rf95.printRegisters()) {
     Serial.println("printRegisters failed");
-    while (1);
+    while (1)
+      ;
   }
   current_state = IDLE;
 }
 uint8_t recv_buf[RH_RF95_MAX_MESSAGE_LEN];
 uint8_t recv_buf_len = sizeof(recv_buf);
 
+
+/* -----------LOOP---------- */
+/* ------------------------- */
+
 void loop() {
+  /* Gather Data from GPS */
   Serial.println("");
-  for (unsigned long start = millis(); millis() - start < 1000;){
-    while (Serial1.available())
-    {
+  for (unsigned long start = millis(); millis() - start < 1000;) {
+    while (Serial1.available()) {
       char c = Serial1.read();
-      Serial.write(c); // uncomment this line if you want to see the GPS data flowing
+      Serial.write(c);  // uncomment this line if you want to see the GPS data flowing
       if (gps.encode(c)) {
         Serial.println("GPS data successfully parsed!");
       }
     }
   }
+
   Serial.println("");
-  switch(current_state){
+  switch (current_state) {
     case IDLE:
       /* Send IDLE packet, change state to AWAIT */
       Serial.println("IDLE STATE");
-      strcpy(radiopacket, "IDLE");
-      radiopacket[4]=0;
+      // strcpy(radiopacket, "IDLE");
+      radiopacket[0] = 0x1;
+      radiopacket[4] = 0;
       rf95.send((uint8_t*)radiopacket, sizeof(radiopacket));
-      writeLog("IDLE", (uint8_t *)"IDLE_SENT");
+      writeLog("IDLE", (uint8_t*)"IDLE_SENT");
       current_state = AWAIT;
       break;
     case AWAIT:
@@ -142,19 +168,17 @@ void loop() {
       if (rf95.waitAvailableTimeout(AWAIT_TIMEOUT)) {
         if (rf95.recv(recv_buf, &recv_buf_len)) {
           current_state = RECV;
-        }
-        else{
+        } else {
           /* Failed to recv (err) */
         }
-      }
-      else{
+      } else {
         current_state = IDLE;
         /* GO TO SLEEP */ /* TODO:
                            * In sleep mode set up interrupt when any packet is recieved
                            * to wake up and change state to RECV
                            */
-        Serial.println("SLEEP"); 
-        delay(1000); //artificially sleep
+        Serial.println("SLEEP");
+        delay(1000);  //artificially sleep
       }
       break;
     case RECV:
@@ -164,16 +188,15 @@ void loop() {
       Serial.println("RECV STATE");
       /* Do something with recv_buf */
       digitalWrite(RX_LED, HIGH);
-      Serial.print("Got: "); Serial.println((char*)recv_buf);
+      Serial.print("Got: ");
+      Serial.println((char*)recv_buf);
       delay(400);
       digitalWrite(RX_LED, LOW);
 
       /* LOG-TYPE,Time,GPS-Coords,,,RecievedPacket */
       writeLog("RECV", recv_buf);
 
-      motor.write(50);
-      delay(5000);
-      motor.write(0);
+      interpret_command(recv_buf);
 
       memset(radiopacket, 0, sizeof(radiopacket));
       strcpy(radiopacket, "ACK + TELEMETRY");
@@ -187,12 +210,11 @@ void loop() {
        * Continuous recieving mode
        * If something is recieved, change state to RECV
        */
-      if(rf95.available()){
+      if (rf95.available()) {
         Serial.println("AWAKE STATE");
         if (rf95.recv(recv_buf, &recv_buf_len)) {
           current_state = RECV;
-        }
-        else{
+        } else {
           /* Failed to recv (err) */
         }
       }
@@ -201,10 +223,9 @@ void loop() {
       /* Should never get here */
       break;
   }
-
 }
 
-bool writeLog(char* type, uint8_t* data){
+bool writeLog(char* type, uint8_t* data) {
   float flat, flon, falt, fspeed;
   gps.f_get_position(&flat, &flon);
   falt = gps.f_altitude();
@@ -212,26 +233,34 @@ bool writeLog(char* type, uint8_t* data){
   int year;
   byte month, day, hour, minute, second, hundredths;
   gps.crack_datetime(&year, &month, &day, &hour, &minute, &second, &hundredths);
-  Serial.println(flat,6);
-  Serial.println(flon,6);
-  Serial.println(falt,6);
+  Serial.println(flat, 6);
+  Serial.println(flon, 6);
+  Serial.println(falt, 6);
   Serial.print(hour);
   Serial.print(":");
   Serial.print(minute);
   Serial.print(":");
   Serial.println(second);
   char log_str[256];
-  sprintf(log_str, "%s,%02d/%02d %02d:%02d:%02d.%02d,%11.6f,%11.6f,%7.2f,%6.2f,%s", 
+  sprintf(log_str, "%s,%02d/%02d %02d:%02d:%02d.%02d,%11.6f,%11.6f,%7.2f,%6.2f,%s",
           type, month, day, hour, minute, second, hundredths, flat, flon, falt, fspeed, data);
   Serial.println(log_str);
   logFile = SD.open("log.txt", FILE_WRITE);
-  if(logFile){
+  if (logFile) {
     logFile.println(log_str);
     logFile.close();
-  }
-  else{
+  } else {
     /* Unable to open file */
     return false;
   }
   return true;
+}
+
+void interpret_command(uint8_t* recv_buf){
+  if(recv_buf[0] = (uint8_t)5){
+    // uint8_t dur = recv_buf[2];
+    motor.write(SERVO_ANGLE);
+    delay(1000);
+    motor.write(0);
+  }
 }
