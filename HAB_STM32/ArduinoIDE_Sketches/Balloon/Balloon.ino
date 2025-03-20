@@ -3,9 +3,11 @@
 #include <SD.h>
 #include <SoftwareSerial.h>
 #include <TinyGPS.h>
+#include <Servo.h>
 
+bool writeLog(uint8_t* data);
 
-#define RFM95_RST     4  
+#define RFM95_RST     2  
 #define RFM95_CS      3   
 #if defined(__AVR_ATmega328P__)
   #define RFM95_INT   2   
@@ -19,34 +21,50 @@
   #define TX_LED      A5
   #define RX_LED      A6
   #define SD_CS       6
+  #define SERVO_PIN   9
+  #define GPS_TX      5
+  #define GPS_RX      4
 #endif
 
 #define RF95_FREQ 915.0
-#define AWAIT_TIMEOUT 15000 /* Time in MS to wait after IDLE packet was sent to recieve a reply. MAX is 65535 */
+#define AWAIT_TIMEOUT 5000//15000 /* Time in MS to wait after IDLE packet was sent to recieve a reply. MAX is 65535 */
 
-enum State {IDLE, AWAIT, RECV, AWAKE};
+enum state_t {IDLE, AWAIT, RECV, AWAKE};
+state_t current_state;
 
-State current_state;
 // Singleton instance of the radio driver
 RH_RF95 rf95(RFM95_CS, RFM95_INT);
+
 // TinyGPS gps;
-// SoftwareSerial ss(GPS_RX, GPS_TX);
+#if defined(__AVR_ATmega328P__)
+SoftwareSerial ss(GPS_RX, GPS_TX);
+#else
+HardwareSerial Serial1(GPS_RX,GPS_TX); 
+#endif
+
+TinyGPS gps;
 
 char radiopacket[20] = "";
 File logFile;
+Servo motor;
 
 void setup() {
   pinMode(RFM95_RST, OUTPUT);
   pinMode(TX_LED, OUTPUT);
   pinMode(RX_LED, OUTPUT);
   digitalWrite(RFM95_RST, HIGH);
+  motor.attach(SERVO_PIN);
 
   Serial.begin(115200);
   while (!Serial) delay(1);
   delay(100);
 
-  /* Start GPS Software Serial */
-  // ss.begin(4800);
+  /* Start GPS Software Serial */ /* STM32 Use Serial1 port */
+#if defined(__AVR_ATmega328P__)
+  ss.begin(9600);
+#else
+  Serial1.begin(9600);
+#endif
 
   Serial.println("LoRa RX Test!");
 
@@ -66,7 +84,7 @@ void setup() {
   /* Init SD Card */
   Serial.print("Initializing SD card...");
   // see if the card is present and can be initialized:
-  if (!SD.begin(chipSelect)) {
+  if (!SD.begin(SD_CS)) {
     Serial.println("Card failed, or not present");
     // don't do anything more:
     while (1);
@@ -93,13 +111,26 @@ uint8_t recv_buf[RH_RF95_MAX_MESSAGE_LEN];
 uint8_t recv_buf_len = sizeof(recv_buf);
 
 void loop() {
+  Serial.println("");
+  for (unsigned long start = millis(); millis() - start < 1000;){
+    while (Serial1.available())
+    {
+      char c = Serial1.read();
+      Serial.write(c); // uncomment this line if you want to see the GPS data flowing
+      if (gps.encode(c)) {
+        Serial.println("GPS data successfully parsed!");
+      }
+    }
+  }
+  Serial.println("");
   switch(current_state){
     case IDLE:
       /* Send IDLE packet, change state to AWAIT */
       Serial.println("IDLE STATE");
       strcpy(radiopacket, "IDLE");
       radiopacket[4]=0;
-      rf95.send(radiopacket, sizeof(radiopacket));
+      rf95.send((uint8_t*)radiopacket, sizeof(radiopacket));
+      writeLog("IDLE", (uint8_t *)"IDLE_SENT");
       current_state = AWAIT;
       break;
     case AWAIT:
@@ -123,7 +154,7 @@ void loop() {
                            * to wake up and change state to RECV
                            */
         Serial.println("SLEEP"); 
-        delay(5000); //artificially sleep
+        delay(1000); //artificially sleep
       }
       break;
     case RECV:
@@ -137,9 +168,16 @@ void loop() {
       delay(400);
       digitalWrite(RX_LED, LOW);
 
+      /* LOG-TYPE,Time,GPS-Coords,,,RecievedPacket */
+      writeLog("RECV", recv_buf);
+
+      motor.write(50);
+      delay(5000);
+      motor.write(0);
+
       memset(radiopacket, 0, sizeof(radiopacket));
       strcpy(radiopacket, "ACK + TELEMETRY");
-      rf95.send(radiopacket, sizeof(radiopacket));
+      rf95.send((uint8_t*)radiopacket, sizeof(radiopacket));
       memset(recv_buf, 0, recv_buf_len); /* Clear buffer */
       current_state = AWAKE;
       break;
@@ -164,4 +202,36 @@ void loop() {
       break;
   }
 
+}
+
+bool writeLog(char* type, uint8_t* data){
+  float flat, flon, falt, fspeed;
+  gps.f_get_position(&flat, &flon);
+  falt = gps.f_altitude();
+  fspeed = gps.f_speed_kmph();
+  int year;
+  byte month, day, hour, minute, second, hundredths;
+  gps.crack_datetime(&year, &month, &day, &hour, &minute, &second, &hundredths);
+  Serial.println(flat,6);
+  Serial.println(flon,6);
+  Serial.println(falt,6);
+  Serial.print(hour);
+  Serial.print(":");
+  Serial.print(minute);
+  Serial.print(":");
+  Serial.println(second);
+  char log_str[256];
+  sprintf(log_str, "%s,%02d/%02d %02d:%02d:%02d.%02d,%11.6f,%11.6f,%7.2f,%6.2f,%s", 
+          type, month, day, hour, minute, second, hundredths, flat, flon, falt, fspeed, data);
+  Serial.println(log_str);
+  logFile = SD.open("log.txt", FILE_WRITE);
+  if(logFile){
+    logFile.println(log_str);
+    logFile.close();
+  }
+  else{
+    /* Unable to open file */
+    return false;
+  }
+  return true;
 }
