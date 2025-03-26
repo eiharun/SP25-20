@@ -1,24 +1,38 @@
+#define LOGGING //COMMENT TO DISABLE LOGGING AND DEPENDENCIES (if you don't have GPS or SD card connected)
+#if defined(__AVR_ATmega328P__)
+  #define ARDUINO
+#endif
+// #undef ARDUINO
+
 #include <SPI.h>
 #include <RH_RF95.h>
-#include <SD.h>
-#include <SoftwareSerial.h>
-#include <TinyGPS.h>
 #include <Servo.h>
 
+#ifdef LOGGING
+  #ifdef ARDUINO
+  #include <SoftwareSerial.h>
+  #endif
+#include <SD.h>
+#include <TinyGPS.h>
 bool writeLog(uint8_t* data);
+#endif 
+
 void interpret_command(uint8_t* recv_buf);
 
 
+#ifdef ARDUINO
 #define RFM95_RST 2
-#define RFM95_CS 3
-#if defined(__AVR_ATmega328P__)
+#define RFM95_CS 10
 #define RFM95_INT 2
 #define TX_LED 8
 #define RX_LED 7
 #define SD_CS 6
 #define GPS_TX 5
 #define GPS_RX 9
+#define SERVO_PIN 3
 #else
+#define RFM95_RST 2
+#define RFM95_CS 3
 #define RFM95_INT 0
 #define TX_LED A5
 #define RX_LED A6
@@ -43,16 +57,18 @@ state_t current_state;
 RH_RF95 rf95(RFM95_CS, RFM95_INT);
 
 // TinyGPS gps;
-#if defined(__AVR_ATmega328P__)
-SoftwareSerial ss(GPS_RX, GPS_TX);
-#else
-HardwareSerial Serial1(GPS_RX, GPS_TX);
-#endif
+#ifdef LOGGING
+  #ifdef ARDUINO
+  SoftwareSerial ss(GPS_RX, GPS_TX);
+  #else
+  HardwareSerial Serial1(GPS_RX, GPS_TX);
+  #endif
 
 TinyGPS gps;
+File logFile;
+#endif
 
 char radiopacket[20] = "";
-File logFile;
 Servo motor;
 
 void setup() {
@@ -75,10 +91,22 @@ void setup() {
   delay(100);
 
   /* Start GPS Software Serial */ /* STM32 Use Serial1 port */
-#if defined(__AVR_ATmega328P__)
+#ifdef LOGGING
+  #ifdef ARDUINO
   ss.begin(9600);
-#else
+  #else
   Serial1.begin(9600);
+  #endif
+  /* Init SD Card */
+  Serial.print("Initializing SD card...");
+  // see if the card is present and can be initialized:
+  if (!SD.begin(SD_CS)) {
+    Serial.println("Card failed, or not present");
+    // don't do anything more:
+    while (1)
+      ;
+  }
+  Serial.println("Card initialized.");
 #endif
 
   Serial.println("LoRa RX Test!");
@@ -97,16 +125,7 @@ void setup() {
   }
   Serial.println("LoRa radio init OK!");
 
-  /* Init SD Card */
-  Serial.print("Initializing SD card...");
-  // see if the card is present and can be initialized:
-  if (!SD.begin(SD_CS)) {
-    Serial.println("Card failed, or not present");
-    // don't do anything more:
-    while (1)
-      ;
-  }
-  Serial.println("Card initialized.");
+  
 
   if (!rf95.setFrequency(RF95_FREQ)) {
     Serial.println("setFrequency failed");
@@ -135,6 +154,7 @@ uint8_t recv_buf_len = sizeof(recv_buf);
 /* ------------------------- */
 
 void loop() {
+#ifdef LOGGING
   /* Gather Data from GPS */
   Serial.println("");
   for (unsigned long start = millis(); millis() - start < 1000;) {
@@ -146,6 +166,7 @@ void loop() {
       }
     }
   }
+#endif
 
   Serial.println("");
   switch (current_state) {
@@ -156,7 +177,11 @@ void loop() {
       radiopacket[0] = 0x1;
       radiopacket[4] = 0;
       rf95.send((uint8_t*)radiopacket, sizeof(radiopacket));
+
+#ifdef LOGGING
       writeLog("IDLE", (uint8_t*)"IDLE_SENT");
+#endif
+
       current_state = AWAIT;
       break;
     case AWAIT:
@@ -192,9 +217,10 @@ void loop() {
       Serial.println((char*)recv_buf);
       delay(400);
       digitalWrite(RX_LED, LOW);
-
+#ifdef LOGGING
       /* LOG-TYPE,Time,GPS-Coords,,,RecievedPacket */
       writeLog("RECV", recv_buf);
+#endif
 
       interpret_command(recv_buf);
 
@@ -225,6 +251,7 @@ void loop() {
   }
 }
 
+#ifdef LOGGING
 bool writeLog(char* type, uint8_t* data) {
   float flat, flon, falt, fspeed;
   gps.f_get_position(&flat, &flon);
@@ -255,6 +282,7 @@ bool writeLog(char* type, uint8_t* data) {
   }
   return true;
 }
+#endif
 
 void interpret_command(uint8_t* recv_buf){
   if(recv_buf[0] = (uint8_t)5){

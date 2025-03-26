@@ -7,3 +7,5 @@
 [stm32-hal-rfm95 by henriheimann](https://github.com/henriheimann/stm32-hal-rfm95/tree/master)
 
 > Todo: analyze which is the better option to build off of or to work with
+
+Using RadioHead Library instead
