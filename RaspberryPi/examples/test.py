@@ -6,7 +6,7 @@ import time
 
 RADIO_FREQ_MHZ = 915.0
 CS = digitalio.DigitalInOut(board.D26)
-RESET = digitalio.DigitalInOut(board.D24)
+RESET = digitalio.DigitalInOut(board.D19)
 spi = busio.SPI(board.SCK, MOSI=board.MOSI, MISO=board.MISO)
 rfm9x = adafruit_rfm9x.RFM9x(spi, CS, RESET, RADIO_FREQ_MHZ, high_power=True)
 #rfm9x.reset()
@@ -20,7 +20,7 @@ while True:
     while IDLE_WAIT:
         idle = rfm9x.receive(timeout=20)
         print("Idle: ", idle)
-        if b"IDLE" in idle:
+        if b"\x01" in idle:
             IDLE_WAIT=False
 
     rfm9x.send(bytes(payload, "utf-8"))

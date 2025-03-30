@@ -16,19 +16,18 @@
 #include <signal.h>
 #include <unistd.h>
 
-#include <RH_RF69.h>
 #include <RH_RF95.h>
 
 
 // Now we include RasPi_Boards.h so this will expose defined 
 // constants with CS/IRQ/RESET/on board LED pins definition
-#define RF_LED_PIN RPI_V2_GPIO_P1_16 // Led on GPIO23 so P1 connector pin #16
-#define RF_CS_PIN  RPI_V2_GPIO_P1_24 // Slave Select on CE0 so P1 connector pin #24
-#define RF_IRQ_PIN RPI_V2_GPIO_P1_22 // IRQ on GPIO25 so P1 connector pin #22
-#define RF_RST_PIN RPI_V2_GPIO_P1_15 // IRQ on GPIO22 so P1 connector pin #15
+// #define RF_LED_PIN RPI_V2_GPIO_P1_16 // Led on GPIO23 so P1 connector pin #16
+#define RF_CS_PIN  26 
+#define RF_IRQ_PIN 5 
+#define RF_RST_PIN 19 
 
 // Our RFM95 Configuration 
-#define RF_FREQUENCY  868.00
+#define RF_FREQUENCY  915.00
 #define RF_GATEWAY_ID 1 
 #define RF_NODE_ID    10
 
