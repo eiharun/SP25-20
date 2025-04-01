@@ -4,6 +4,9 @@ import busio
 from adafruit_rfm9x import *
 from adafruit_rfm9x import _RH_RF95_REG_0D_FIFO_ADDR_PTR, _RH_RF95_REG_00_FIFO, _RH_RF95_REG_22_PAYLOAD_LENGTH, _RH_RF95_REG_12_IRQ_FLAGS, _RH_RF95_REG_10_FIFO_RX_CURRENT_ADDR, _RH_RF95_REG_13_RX_NB_BYTES, _RH_RF95_REG_26_MODEM_CONFIG3
 
+import logging
+logger = logging.getLogger(__name__)
+
 #Inherit Adafruit RFM9x Class to make RFM95 with custom packet headers
 class RFM95(RFM9x):
     #Note: Overload send/recieve OR packetheader (dest, node, selfid, flags)
@@ -31,11 +34,10 @@ class RFM95(RFM9x):
         self.spreading_factor = 12
         self.tx_power=23
         # 4 Byte Packet Headers
-        self._seq = 255
-        self._ack = 255
+        self._seq = 0
+        self._ack = 0
         self._CMD = 0
         self._len = 0
-
     
     # Setters
     def setHeaders(self, seq:int, ack:int, CMD:int, length:int):
@@ -264,5 +266,6 @@ class RFM95Wrapper():
         self.rfm = RFM95(self.spi, CS, RESET, FREQ)
         self.rfm.setHeaders(0,0,0,0)
         
-    def construct(self):
+    def construct(self) -> RFM95:
+        """Returns constructed ready-to-use RFM95 instance"""
         return self.rfm
