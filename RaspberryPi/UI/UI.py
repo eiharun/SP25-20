@@ -1,5 +1,28 @@
 import tkinter as tk
 from tkinter import messagebox
+import rfm95api
+import digitalio
+import board
+import busio
+import adafruit_rfm9x
+#rfm95 = RFM95Wrapper(SCK:DigitalInOut,
+ #                MOSI:DigitalInOut, 
+  #               MISO:DigitalInOut,
+   #              CS:DigitalInOut,
+   #              RESET:DigitalInOut,
+    #             FREQ:float)
+    #rfm95.construct()
+    ### examples: rfm95.send("hi")
+    #find these pins
+
+# RFM95_INT = 0
+# RADIO_FREQ_MHZ = 915.0
+# CS = digitalio.DigitalInOut(board.D26)
+# RESET = digitalio.DigitalInOut(board.D19)
+# #TX_LED = A5
+# #RX_LED = A6
+# spi = busio.SPI(board.SCK, MOSI=board.MOSI, MISO=board.MISO)
+# rfm9x = adafruit_rfm9x.RFM9x(spi, CS, RESET, RADIO_FREQ_MHZ, high_power=True)
 
 class CutOff:
     def __init__(self, root):
