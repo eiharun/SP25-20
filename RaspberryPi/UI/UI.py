@@ -83,6 +83,7 @@ class PinPad:
         self.entry.insert(0, current + str(number))
 
     def clear_entry(self):
+        self.result_label.config(text= f"Cleared", fg="green")
         self.entry.delete(0, tk.END)
 
     def check_pin(self):
@@ -94,7 +95,7 @@ class PinPad:
             self.result_label.config(text="Canceling command", fg="red")
             # Place the code to execute after cancellation here
 
-        self.clear_entry()
+        self.entry.delete(0, tk.END)
 
 
 # Run the App
