@@ -1,36 +1,18 @@
 #define LOGGING //COMMENT TO DISABLE LOGGING AND DEPENDENCIES (if you don't have GPS or SD card connected)
-#if defined(__AVR_ATmega328P__)
-  #define ARDUINO
-#endif
-// #undef ARDUINO
 
 #include <SPI.h>
 #include <RH_RF95.h>
 #include <Servo.h>
 
 #ifdef LOGGING
-  #ifdef ARDUINO
-  #include <SoftwareSerial.h>
-  #endif
 #include <SD.h>
 #include <TinyGPS.h>
 bool writeLog(uint8_t* data);
+#define LOG_FILENAME "log.txt"
 #endif 
 
 void interpret_command(uint8_t* recv_buf);
 
-
-#ifdef ARDUINO
-#define RFM95_RST 2
-#define RFM95_CS 10
-#define RFM95_INT 2
-#define TX_LED 8
-#define RX_LED 7
-#define SD_CS 6
-#define GPS_TX 5
-#define GPS_RX 9
-#define SERVO_PIN 3
-#else
 #define RFM95_RST 2
 #define RFM95_CS 3
 #define RFM95_INT 0
@@ -40,7 +22,6 @@ void interpret_command(uint8_t* recv_buf);
 #define SERVO_PIN 9
 #define GPS_TX 5
 #define GPS_RX 4
-#endif
 
 #define RF95_FREQ 915.0
 #define AWAIT_TIMEOUT 5000  //15000 /* Time in MS to wait after IDLE packet was sent to recieve a reply. MAX is 65535 */
@@ -56,14 +37,8 @@ state_t current_state;
 // Singleton instance of the radio driver
 RH_RF95 rf95(RFM95_CS, RFM95_INT);
 
-// TinyGPS gps;
 #ifdef LOGGING
-  #ifdef ARDUINO
-  SoftwareSerial ss(GPS_RX, GPS_TX);
-  #else
-  HardwareSerial Serial1(GPS_RX, GPS_TX);
-  #endif
-
+HardwareSerial Serial1(GPS_RX, GPS_TX);
 TinyGPS gps;
 File logFile;
 #endif
@@ -92,11 +67,7 @@ void setup() {
 
   /* Start GPS Software Serial */ /* STM32 Use Serial1 port */
 #ifdef LOGGING
-  #ifdef ARDUINO
-  ss.begin(9600);
-  #else
   Serial1.begin(9600);
-  #endif
   /* Init SD Card */
   Serial.print("Initializing SD card...");
   // see if the card is present and can be initialized:
@@ -107,6 +78,16 @@ void setup() {
       ;
   }
   Serial.println("Card initialized.");
+
+  logFile = SD.open("log.txt", FILE_WRITE);
+  if (logFile) {
+    logFile.println("LOGGING START");
+    logFile.close();
+  } else {
+    /* Unable to open file */
+    Serial.println("Cannot open log.txt");
+    while(1);
+  }
 #endif
 
   Serial.println("LoRa RX Test!");
@@ -124,8 +105,6 @@ void setup() {
       ;
   }
   Serial.println("LoRa radio init OK!");
-
-  
 
   if (!rf95.setFrequency(RF95_FREQ)) {
     Serial.println("setFrequency failed");
@@ -160,10 +139,11 @@ void loop() {
   for (unsigned long start = millis(); millis() - start < 1000;) {
     while (Serial1.available()) {
       char c = Serial1.read();
-      Serial.write(c);  // uncomment this line if you want to see the GPS data flowing
-      if (gps.encode(c)) {
-        Serial.println("GPS data successfully parsed!");
-      }
+      // Serial.write(c);  // uncomment this line if you want to see the GPS data flowing
+      gps.encode(c);
+      // if (gps.encode(c)) {
+        // Serial.println("GPS data successfully parsed!");
+      // }
     }
   }
 #endif
@@ -179,7 +159,7 @@ void loop() {
       rf95.send((uint8_t*)radiopacket, sizeof(radiopacket));
 
 #ifdef LOGGING
-      writeLog("IDLE", (uint8_t*)"IDLE_SENT");
+      writeLog("IDLE", (uint8_t*)"Idle Sent");
 #endif
 
       current_state = AWAIT;
@@ -260,19 +240,20 @@ bool writeLog(char* type, uint8_t* data) {
   int year;
   byte month, day, hour, minute, second, hundredths;
   gps.crack_datetime(&year, &month, &day, &hour, &minute, &second, &hundredths);
-  Serial.println(flat, 6);
-  Serial.println(flon, 6);
-  Serial.println(falt, 6);
-  Serial.print(hour);
-  Serial.print(":");
-  Serial.print(minute);
-  Serial.print(":");
-  Serial.println(second);
+  // Serial.println(flat, 6);
+  // Serial.println(flon, 6);
+  // Serial.println(falt, 6);
+  // Serial.print(hour);
+  // Serial.print(":");
+  // Serial.print(minute);
+  // Serial.print(":");
+  // Serial.println(second);
   char log_str[256];
   sprintf(log_str, "%s,%02d/%02d %02d:%02d:%02d.%02d,%11.6f,%11.6f,%7.2f,%6.2f,%s",
           type, month, day, hour, minute, second, hundredths, flat, flon, falt, fspeed, data);
+  Serial.print("Logged: ");
   Serial.println(log_str);
-  logFile = SD.open("log.txt", FILE_WRITE);
+  logFile = SD.open(LOG_FILENAME, FILE_WRITE);
   if (logFile) {
     logFile.println(log_str);
     logFile.close();
