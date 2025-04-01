@@ -71,8 +71,8 @@ void setup() {
   // you can set transmitter powers from 5 to 23 dBm:
   rf95.setTxPower(23, false);
   rf95.setSpreadingFactor(12);
-  // rf95.setSignalBandwidth(12500);
-  #define RX_TIMEOUT 2000
+  rf95.setSignalBandwidth(125000);
+  #define RX_TIMEOUT 5000
   #define DELAY_TX 1500
   digitalWrite(TX_LED, LOW);
 }
@@ -80,20 +80,19 @@ void setup() {
 int16_t packetnum = 0;  // packet counter, we increment per xmission
 
 void loop() {
-  delay(DELAY_TX); // Wait DELAY_TX ms between transmits, could also 'sleep' here!
   Serial.println("Transmitting..."); // Send a message to rf95_server
 
-  char radiopacket[20] = "Hello World #      ";
-  itoa(packetnum++, radiopacket+13, 10);
-  Serial.print("Sending "); Serial.println(radiopacket);
+  char radiopacket[16] = "Sending #      ";
+  packetnum = (packetnum+1)%99999;
+  itoa(packetnum, radiopacket+9, 10);
+  Serial.print("Sending: "); Serial.println(radiopacket);
   radiopacket[19] = 0;
 
   Serial.println("Sending...");
   unsigned long start = millis();
   digitalWrite(TX_LED, HIGH);
   delay(10);
-  rf95.send((uint8_t *)radiopacket, 20);
-
+  rf95.send((uint8_t *)radiopacket, 16);
 
   Serial.println("Waiting for packet to complete...");
   delay(10);
@@ -112,9 +111,11 @@ void loop() {
       digitalWrite(RX_LED, HIGH);
       Serial.print("Got reply: ");
       Serial.println((char*)buf);
-      Serial.print("RSSI: ");
+      Serial.print("\tRSSI: ");
       Serial.println(rf95.lastRssi(), DEC);
-      Serial.print("Latency: ");
+      Serial.print("\tSNR: ");
+      Serial.println(rf95.lastSNR(), DEC);
+      Serial.print("\tLatency: ");
       latencies[packetnum%255] = end-start;
       Serial.println(end-start);
       if (packetnum >= 255){
@@ -133,7 +134,7 @@ void loop() {
   } else {
     Serial.println("No reply, is there a listener around?");
   }
-  delay(50);
+  delay(DELAY_TX);
   digitalWrite(RX_LED, LOW);
 
 }
