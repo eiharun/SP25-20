@@ -8,7 +8,7 @@
 
 #include <SPI.h>
 #include <RH_RF95.h>
-#include<Servo.h>
+#include <Servo.h>
 #include <SD.h>
 #include <TinyGPS.h>
 
@@ -106,6 +106,9 @@ void setup() {
   // rf95.setSignalBandwidth(12500);
 }
 
+unsigned long previousgpsMillis = 0;  // Store last execution time
+const unsigned long gpsinterval = 60000; // 1 minute (60,000 ms)
+
 void loop() {
   Serial.println("");
   for (unsigned long start = millis(); millis() - start < 1000;) {
@@ -118,7 +121,14 @@ void loop() {
       // }
     }
   }
+  unsigned long gpsMillis = millis();
+  if (gpsMillis - previousgpsMillis >= gpsinterval) {
+        previousgpsMillis = gpsMillis;  // Update last execution time
 
+        // Code to execute every minute
+        Serial.println("Executing task...");
+        writeLog("GPS", (uint8_t*)"Periodic GPS Log", 0, 0);
+    }
   if (rf95.available()) {
     // Should be a message for us now
     uint8_t buf[RH_RF95_MAX_MESSAGE_LEN];
