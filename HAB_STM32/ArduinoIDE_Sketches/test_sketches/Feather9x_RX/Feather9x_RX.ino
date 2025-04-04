@@ -134,6 +134,14 @@ void loop() {
     uint8_t len = sizeof(buf); 
     memset(buf, 0, sizeof(buf));
     if (rf95.recv(buf, &len)) {
+      Serial.print("Headers: ");
+      Serial.print(rf95.headerTo());
+      Serial.print(" ");
+      Serial.print(rf95.headerFrom());
+      Serial.print(" ");
+      Serial.print(rf95.headerId());
+      Serial.print(" ");
+      Serial.println(rf95.headerFlags());
       digitalWrite(RX_LED, HIGH);
       RH_RF95::printBuffer("Received: ", buf, len);
       Serial.print("Got: ");
