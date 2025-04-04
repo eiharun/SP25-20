@@ -10,28 +10,19 @@ RESET = digitalio.DigitalInOut(board.D19)
 spi = busio.SPI(board.SCK, MOSI=board.MOSI, MISO=board.MISO)
 rfm9x = adafruit_rfm9x.RFM9x(spi, CS, RESET, RADIO_FREQ_MHZ, high_power=True)
 #rfm9x.reset()
-rfm9x._write_u8(0x26, 0x08) # Enable low data rate optimization
 rfm9x.tx_power=23
 rfm9x.spreading_factor=12
-IDLE_WAIT=True
+rfm9x.signal_bandwidth=125000
+rfm9x._write_u8(0x26, 0x08) # Enable low data rate optimization
 while True:
-    payload = input("Enter message to send: ")
-
-    while IDLE_WAIT:
-        idle = rfm9x.receive(timeout=20)
-        print("Idle: ", idle)
-        if b"\x01" in idle:
-            IDLE_WAIT=False
-
-    rfm9x.send(bytes(payload, "utf-8"))
-    if(rfm9x.tx_done):
-        print("Sent packet: ", payload)
         packet = rfm9x.receive(timeout=10)
-
         if packet is None:
             print("Recieved Nothing")
-
         else:
+            recv = str(packet, 'ascii')
             print(f"Recieved: {str(packet,'ascii')}")
-            print(f"Signal Strength: {rfm9x.last_rssi}")
-            #time.sleep(1);
+            print(f"\tSignal Strength: {rfm9x.last_rssi}")
+            print(f"\tSNR: {rfm9x.last_snr}")
+            rfm9x.send(f"Acked: {recv[9:]}".encode('utf-8'))
+            print("\tSend Ack")
+            time.sleep(0.1)
