@@ -49,7 +49,7 @@ void setup() {
   Serial.begin(115200);
   while (!Serial) delay(1);
   delay(100);
-
+  Serial.println("Range Test RX!");
  /* Start GPS Software Serial */ /* STM32 Use Serial1 port */
   Serial1.begin(9600);
   /* Init SD Card */
@@ -126,7 +126,6 @@ void loop() {
         previousgpsMillis = gpsMillis;  // Update last execution time
 
         // Code to execute every minute
-        Serial.println("Executing task...");
         writeLog("GPS", (uint8_t*)"Periodic GPS Log", 0, 0);
     }
   if (rf95.available()) {

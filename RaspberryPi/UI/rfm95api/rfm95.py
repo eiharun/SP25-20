@@ -88,10 +88,10 @@ class RFM95(RFM9x):
         data: ReadableBuffer,
         *,
         keep_listening: bool = False,
-        destination: Optional[int] = None,
-        node: Optional[int] = None,
-        identifier: Optional[int] = None,
-        flags: Optional[int] = None
+        seq: Optional[int] = None,
+        ack: Optional[int] = None,
+        CMD: Optional[int] = None,
+        length: Optional[int] = None
     ) -> bool:
         """Send a string of data using the transmitter.
         You can only send 252 bytes at a time
@@ -118,22 +118,22 @@ class RFM95(RFM9x):
         self._write_u8(_RH_RF95_REG_0D_FIFO_ADDR_PTR, 0x00)  # FIFO starts at 0.
         # Combine header and data to form payload
         payload = bytearray(4)
-        if destination is None:  # use attribute
-            payload[0] = self.destination
+        if seq is None:  # use attribute
+            payload[0] = self._seq
         else:  # use kwarg
-            payload[0] = destination
-        if node is None:  # use attribute
-            payload[1] = self.node
+            payload[0] = seq
+        if ack is None:  # use attribute
+            payload[1] = self._ack
         else:  # use kwarg
-            payload[1] = node
-        if identifier is None:  # use attribute
-            payload[2] = self.identifier
+            payload[1] = ack
+        if CMD is None:  # use attribute
+            payload[2] = self._CMD
         else:  # use kwarg
-            payload[2] = identifier
-        if flags is None:  # use attribute
-            payload[3] = self.flags
+            payload[2] = CMD
+        if length is None:  # use attribute
+            payload[3] = self._len
         else:  # use kwarg
-            payload[3] = flags
+            payload[3] = length
         payload = payload + data
         # Write payload.
         self._write_from(_RH_RF95_REG_00_FIFO, payload)
@@ -254,14 +254,15 @@ class RFM95Wrapper():
     """Wrapper for the RFM95 class to make it easier to use.
     It comes pre-initialized. Only need to provide the digitalio pins and frequency.
     The construct method returns the RFM95 object. To be used by the user.
+    EDIT THIS CLASS IF YOU ARE CHANGING PIN OR FREQUENCY DEFAULTS.
     """
     def __init__(self, 
-                 SCK:DigitalInOut,
-                 MOSI:DigitalInOut, 
-                 MISO:DigitalInOut,
-                 CS:DigitalInOut,
-                 RESET:DigitalInOut,
-                 FREQ:float):
+                 SCK:DigitalInOut = board.SCK,
+                 MOSI:DigitalInOut = board.MOSI, 
+                 MISO:DigitalInOut = board.MISO,
+                 CS:DigitalInOut = digitalio.DigitalInOut(board.D26),
+                 RESET:DigitalInOut = digitalio.DigitalInOut(board.D19),
+                 FREQ:float = 915.0):
         self.spi = busio.SPI(SCK, MOSI=MOSI, MISO=MISO)
         self.rfm = RFM95(self.spi, CS, RESET, FREQ)
         self.rfm.setHeaders(0,0,0,0)
