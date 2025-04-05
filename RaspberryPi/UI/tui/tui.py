@@ -40,6 +40,7 @@ class TUICommand(cmd.Cmd):
         self.intro += "Type 'clear' to clear the screen.\n"
         
         self.send_on_idle = True
+        self._idle_status = False
         
     #----------------COMMANDS SET-------------------------#
     def do_open(self, arg):
@@ -61,6 +62,16 @@ class TUICommand(cmd.Cmd):
         print("Waiting for IDLE (balloon to be in range)")
         print(f"Opening vent for {duration} {'seconds' if unit == 's' else 'minutes'}")
         
+    def do_cutdown(self):
+        """"Cutdown the balloon"""
+        answer = input("Are you sure you want to cutdown the balloon? y/n:")
+        if answer.lower() == 'y':
+            #send cutdown
+            pass
+        else:
+            print("Ok, returning")
+            return
+        
     #----------------MISC---------------------------------#    
         
     def do_disable_idle(self):
@@ -75,6 +86,9 @@ class TUICommand(cmd.Cmd):
         
     def default(self, line):
         print(f"Unknown command: {line}")
+        
+    def emptyline(self):
+        return
         
     def do_exit(self, arg):
          """Exits the shell."""

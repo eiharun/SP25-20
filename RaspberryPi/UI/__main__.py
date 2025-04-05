@@ -21,5 +21,5 @@ if __name__ == "__main__":
         tui = TUI()
         tui.run()
     else:
-        #gui
+        #run the by default gui
         pass
