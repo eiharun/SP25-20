@@ -1,4 +1,4 @@
-# User Inerface in Python
+# User Inerface in Python [UI](UI/)
 
 ## Directions
 
@@ -45,6 +45,38 @@
    ```
 
 > To deactivate the virtual environment, run `deactivate` in the terminal.
+
+
+## How to use UI module
+
+Assuing venv is set up, type 
+
+```bash
+export PYTHONPATH={PATH TO UI FOLDER}
+```
+> For example, if the UI directory is in my current directory <br>
+> `export PYTHONPATH=./UI`
+
+After this you can use
+
+```bash
+python3 -m UI {followed by flags}
+```
+
+to run the program
+
+For help, run
+
+```bash
+python3 -m UI [-h|--help]
+
+usage: __main__.py [-h] [-t] [-D]
+
+optional arguments:
+  -h, --help   show this help message and exit
+  -t, --tui    Launch textual user interface
+  -D, --debug  Enable debug logging
+```
 
 ## Dependencies C++ ONLY
 
