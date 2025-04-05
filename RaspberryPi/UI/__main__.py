@@ -17,7 +17,6 @@ if __name__ == "__main__":
     if tui:
         logger.info("Starting TUI")
         tui = TUI()
-        #...
         tui.run()
     else:
         #gui

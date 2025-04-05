@@ -41,21 +41,29 @@ class RFM95(RFM9x):
     
     # Setters
     def setHeaders(self, seq:int, ack:int, CMD:int, length:int):
+        assert 0 <= seq <= 255
+        assert 0 <= ack <= 255
+        assert 0 <= CMD <= 255
+        assert 0 <= length <= 255
         self._seq = seq
         self._ack = ack
         self._CMD = CMD
         self._len = length
     
     def setSeq(self, seq:int):
+        assert 0 <= seq <= 255
         self._seq = seq
         
     def setAck(self, ack:int):
+        assert 0 <= ack <= 255
         self._ack = ack
         
     def setCMD(self, CMD:int):
+        assert 0 <= CMD <= 255
         self._CMD = CMD
         
     def setLen(self, length:int):
+        assert 0 <= length <= 255
         self._len = length
     
     # Getters
@@ -162,6 +170,8 @@ class RFM95(RFM9x):
             self.idle()
         # Clear interrupt.
         self._write_u8(_RH_RF95_REG_12_IRQ_FLAGS, 0xFF)
+        logger.debug("Sent packet with headers: %s", self.getHeaders())
+        logger.debug("And Payload", payload)
         return not timed_out
     
     def receive(
@@ -248,6 +258,9 @@ class RFM95(RFM9x):
             self.idle()
         # Clear interrupt.
         self._write_u8(_RH_RF95_REG_12_IRQ_FLAGS, 0xFF)
+        if packet:
+            logger.debug(f"Received packet {packet}")
+            logger.debug(f"With headers {self.extractHeaders(packet)}")
         return packet
     
 class RFM95Wrapper():
@@ -265,7 +278,6 @@ class RFM95Wrapper():
                  FREQ:float = 915.0):
         self.spi = busio.SPI(SCK, MOSI=MOSI, MISO=MISO)
         self.rfm = RFM95(self.spi, CS, RESET, FREQ)
-        self.rfm.setHeaders(0,0,0,0)
         
     def construct(self) -> RFM95:
         """Returns constructed ready-to-use RFM95 instance"""
