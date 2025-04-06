@@ -7,12 +7,11 @@
 // It is designed to work with the other example Feather9x_TX
 
 #include <SPI.h>
-#include <RH_RF95.h>
+#include <RH_RF95_CH.h>
 #include <Servo.h>
 #include <SD.h>
 #include <TinyGPS.h>
 
-bool writeLog(char* type, uint8_t* data);
 
 #define RFM95_RST 2  // 
 #define RFM95_CS  3  // 
@@ -30,7 +29,7 @@ bool writeLog(char* type, uint8_t* data);
 #define LOG_FILENAME "log.txt"
 
 // Singleton instance of the radio driver
-RH_RF95 rf95(RFM95_CS, RFM95_INT);
+RH_RF95_CH rf95(RFM95_CS, RFM95_INT);
 
 // instantiate servo object
 Servo servo;
@@ -38,6 +37,17 @@ Servo servo;
 HardwareSerial Serial1(GPS_RX, GPS_TX);
 TinyGPS gps;
 File logFile;
+
+struct Recv_data {
+  uint8_t seq;
+  uint8_t ack;
+  uint8_t CMD;
+  uint8_t len;
+  uint8_t* data;
+}; 
+
+bool writeLog(char* type, Recv_data recv_log, short rssi, int snr);
+bool writeLogPG();
 
 void setup() {
   pinMode(LED_BUILTIN, OUTPUT);
@@ -66,7 +76,8 @@ void setup() {
   logFile = SD.open("log.txt", FILE_WRITE);
   if (logFile) {
     logFile.println("LOGGING FORMAT");
-    logFile.println("Log Type,RSSI(dBm),SNR(db),Month/Day Hour:Minute:Second.Hundredths,Lat,Lon,Alt,Speed(km),data");
+    logFile.println("RECV,RSSI(dBm),SNR(db),Month/Day Hour:Minute:Second.Hundredths,Lat,Lon,Alt,Speed(km),seq,ack,cmd,len,data");
+    logFile.println("GPS,Month/Day Hour:Minute:Second.Hundredths,Lat,Lon,Alt,Speed(km)");
     //Also log the LOG formats
     logFile.close();
   } else {
@@ -126,7 +137,7 @@ void loop() {
         previousgpsMillis = gpsMillis;  // Update last execution time
 
         // Code to execute every minute
-        writeLog("GPS", (uint8_t*)"Periodic GPS Log", 0, 0);
+        writeLogPG();
     }
   if (rf95.available()) {
     // Should be a message for us now
@@ -137,13 +148,18 @@ void loop() {
       Serial.print("Headers: ");
       Serial.print(rf95.headerTo());
       Serial.print(" ");
+      Serial.println(rf95.headerSeq());
       Serial.print(rf95.headerFrom());
       Serial.print(" ");
+      Serial.println(rf95.headerAck());
       Serial.print(rf95.headerId());
       Serial.print(" ");
-      Serial.println(rf95.headerFlags());
+      Serial.println(rf95.headerCMD());
+      Serial.print(rf95.headerFlags());
+      Serial.print(" ");
+      Serial.println(rf95.headerLen());
       digitalWrite(RX_LED, HIGH);
-      RH_RF95::printBuffer("Received: ", buf, len);
+      RH_RF95_CH::printBuffer("Received: ", buf, len);
       Serial.print("Got: ");
       Serial.println((char*)buf);
       Serial.print("\tRSSI: ");
@@ -152,12 +168,13 @@ void loop() {
       Serial.println(rf95.lastSNR(), DEC);
       delay(50);
       digitalWrite(RX_LED, LOW);
-      
+      Recv_data recv_log = { rf95.headerSeq(), rf95.headerAck(), rf95.headerCMD(), rf95.headerLen(), buf};
       //LOG
-      writeLog("RECV", (uint8_t*)buf, rf95.lastRssi(), rf95.lastSNR());
+      writeLog("RECV", recv_log, rf95.lastRssi(), rf95.lastSNR());
       
       // Send a reply
       uint8_t data[12] = "ACK #      ";
+      rf95.setHeaders(1,1,rf95.headerCMD(), 0);
       memcpy(data+5, buf+9, 5);
       digitalWrite(TX_LED, HIGH);
       rf95.send(data, 12);
@@ -180,7 +197,7 @@ void loop() {
 }
 
 
-bool writeLog(char* type, uint8_t* data, short rssi, int snr) {
+bool writeLog(char* type, Recv_data recv_log, short rssi, int snr) {
   float flat, flon, falt, fspeed;
   gps.f_get_position(&flat, &flon);
   falt = gps.f_altitude();
@@ -197,8 +214,40 @@ bool writeLog(char* type, uint8_t* data, short rssi, int snr) {
   // Serial.print(":");
   // Serial.println(second);
   char log_str[256];
-  sprintf(log_str, "%s,%hi,%d,%02d/%02d %02d:%02d:%02d.%02d,%11.6f,%11.6f,%7.2f,%6.2f,%s",
-          type, rssi, snr, month, day, hour, minute, second, hundredths, flat, flon, falt, fspeed, data);
+  sprintf(log_str, "%s,%hi,%d,%02d/%02d %02d:%02d:%02d.%02d,%11.6f,%11.6f,%7.2f,%6.2f,%02x,%02x,%02x,%02x,%s",
+          type, rssi, snr, month, day, hour, minute, second, hundredths, flat, flon, falt, fspeed, recv_log.seq, recv_log.ack, recv_log.CMD, recv_log.len, (char*)recv_log.data);
+  Serial.print("Logged: ");
+  Serial.println(log_str);
+  logFile = SD.open(LOG_FILENAME, FILE_WRITE);
+  if (logFile) {
+    logFile.println(log_str);
+    logFile.close();
+  } else {
+    /* Unable to open file */
+    return false;
+  }
+  return true;
+}
+
+bool writeLogPG(){
+  float flat, flon, falt, fspeed;
+  gps.f_get_position(&flat, &flon);
+  falt = gps.f_altitude();
+  fspeed = gps.f_speed_kmph();
+  int year;
+  byte month, day, hour, minute, second, hundredths;
+  gps.crack_datetime(&year, &month, &day, &hour, &minute, &second, &hundredths);
+  // Serial.println(flat, 6);
+  // Serial.println(flon, 6);
+  // Serial.println(falt, 6);
+  // Serial.print(hour);
+  // Serial.print(":");
+  // Serial.print(minute);
+  // Serial.print(":");
+  // Serial.println(second);
+  char log_str[256];
+  sprintf(log_str, "GPS,%02d/%02d %02d:%02d:%02d.%02d,%11.6f,%11.6f,%7.2f,%6.2f",
+          month, day, hour, minute, second, hundredths, flat, flon, falt, fspeed);
   Serial.print("Logged: ");
   Serial.println(log_str);
   logFile = SD.open(LOG_FILENAME, FILE_WRITE);
