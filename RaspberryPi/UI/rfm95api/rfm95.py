@@ -88,8 +88,11 @@ class RFM95(RFM9x):
         ack     = packet[1]
         CMD     = packet[2]
         length  = packet[3]
-        data    = packet[4:]
-        return (seq, ack, CMD, length, data)
+        if len(packet) > 4:
+            data    = packet[4:]
+            return (seq, ack, CMD, length, data)
+        else:
+            return (seq, ack, CMD, length, None)
     
     def send(
         self,
@@ -130,18 +133,22 @@ class RFM95(RFM9x):
             payload[0] = self._seq
         else:  # use kwarg
             payload[0] = seq
+            self._seq = seq
         if ack is None:  # use attribute
             payload[1] = self._ack
         else:  # use kwarg
             payload[1] = ack
+            self._ack = ack
         if CMD is None:  # use attribute
             payload[2] = self._CMD
         else:  # use kwarg
             payload[2] = CMD
+            self._CMD = CMD
         if length is None:  # use attribute
             payload[3] = self._len
         else:  # use kwarg
             payload[3] = length
+            self._len = length
         payload = payload + data
         # Write payload.
         self._write_from(_RH_RF95_REG_00_FIFO, payload)
@@ -171,7 +178,7 @@ class RFM95(RFM9x):
         # Clear interrupt.
         self._write_u8(_RH_RF95_REG_12_IRQ_FLAGS, 0xFF)
         logger.debug("Sent packet with headers: %s", self.getHeaders())
-        logger.debug("And Payload", payload)
+        logger.debug(f"And Payload {payload}")
         return not timed_out
     
     def receive(
@@ -243,13 +250,8 @@ class RFM95(RFM9x):
                     self._read_into(_RH_RF95_REG_00_FIFO, packet)
                 # Clear interrupt.
                 self._write_u8(_RH_RF95_REG_12_IRQ_FLAGS, 0xFF)
-                if fifo_length < 5:
-                    packet = None
-                else:
-                    if (
-                        not with_header and packet is not None
-                    ):  # skip the header if not wanted
-                        packet = packet[4:]
+                if (not with_header and packet is not None):  # skip the header if not wanted
+                    packet = packet[4:]
         # Listen again if necessary and return the result packet.
         if keep_listening:
             self.listen()

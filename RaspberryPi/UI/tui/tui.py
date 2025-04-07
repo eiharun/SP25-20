@@ -21,6 +21,7 @@ class TUI:
             tui_command = TUICommand(self.rfm95)
             tui_command.cmdloop()
         except KeyboardInterrupt:
+            print()
             logger.debug("Exiting Ground Station TUI")
             print("Exiting Ground Station TUI")
             exit(0)
@@ -41,6 +42,8 @@ class TUICommand(cmd.Cmd):
         
         self.send_on_idle = True
         self._idle_status = False
+        self.seq = 0
+        
         
     #----------------COMMANDS SET-------------------------#
     def do_open(self, arg):
@@ -54,13 +57,35 @@ class TUICommand(cmd.Cmd):
     \tOPEN 10 s
     """
         assert len(arg.split(' ')) == 2
-        duration = arg.split(' ')[0]
+        duration = int(arg.split(' ')[0])
         unit = arg.split(' ')[1].lower()
         assert unit == 's' or unit == 'm'
         if not self.verify_send_on_idle():
             return
         print("Waiting for IDLE (balloon to be in range)")
         print(f"Opening vent for {duration} {'seconds' if unit == 's' else 'minutes'}")
+        cmd = 0
+        if unit == 's':
+            cmd = Commands.OPENs.value
+        elif unit == 'm':
+            cmd = Commands.OPENm.value
+        assert cmd != 0
+        num_bytes = self.byte_length(duration)
+        payload = duration.to_bytes(num_bytes, byteorder='big')
+        logger.debug(f"Verification: {duration}:{payload}:{num_bytes}:{int.from_bytes(payload,'big')}")
+        #TODO: Wait for idle
+        self.rfm95.send(payload, seq=self.seq, ack=0, CMD=cmd, length=num_bytes)
+        self.seq = (self.seq+1)%256
+        recv = self.rfm95.receive(timeout=5)
+        if recv is None:
+            print("No Ack recieved. Verify gps data before resending")
+        else:
+            seq,ack,cmd,length,data = extractHeaders(recv)
+            # Expected to recieve an ACK with ack# = prev seq#+1, cmd=0, length=0, and data=cmd
+            print(f"Recieved Headers: {seq} {ack} {cmd} {length}")
+            print(f"Recieved Ack: {data}")
+            print(f"\tSignal Strength: {rfm95.last_rssi}")
+            print(f"\tSNR: {rfm95.last_snr}")
         
     def do_cutdown(self):
         """"Cutdown the balloon"""
@@ -120,3 +145,6 @@ class TUICommand(cmd.Cmd):
                 return False
         else:
             return True
+        
+    def byte_length(self,i):
+        return (i.bit_length() + 7) // 8

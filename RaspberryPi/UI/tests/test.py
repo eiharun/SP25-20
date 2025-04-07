@@ -4,7 +4,7 @@ constructor = RFM95Wrapper()
 rfm95 = constructor.construct()
 payload = b"Hello World"
 
-rfm95.send(payload, seq=1, ack=0, CMD=64, length=len(payload))
+rfm95.send(payload, seq=255, ack=0, CMD=64, length=len(payload))
 # Below has the same effect as above
 # rfm95.setHeaders(1,0,64,len(payload))
 # rfm95.send(payload)
