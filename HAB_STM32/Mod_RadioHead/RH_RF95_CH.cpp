@@ -289,7 +289,7 @@ void RH_RF95_CH::validateRxBuf()
     // Assume CMD=0 is an invalid packet since it does not correspond to a command
     // This is a bit of a hack around this function in the RadioHead Library
     // to pass the RxBuf validation
-    if (_promiscuous || _rxHeaderCMD != 0)
+    if (_promiscuous || _rxHeaderLen <= 255 )
     {
     _rxGood++;
     _rxBufValid = true;

@@ -36,7 +36,7 @@ class RFM95(RFM9x):
         # 4 Byte Packet Headers
         self._seq = 0
         self._ack = 0
-        self._CMD = 0
+        self._CMD = 194
         self._len = 0
     
     # Setters
