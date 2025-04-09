@@ -1,6 +1,7 @@
 import argparse
 import logging
 from tui import TUI
+from gui import GUI
 
 logger = logging.getLogger(__name__)
 
@@ -16,10 +17,13 @@ if __name__ == "__main__":
     logging.basicConfig(level=logging.DEBUG if args.debug else logging.INFO,
                         format="%(asctime)s %(levelname)s %(name)s %(message)s")
     tui = args.tui
-    logger.debug("Starting Program")
+    logger.info("Starting Program")
     if tui:
+        logger.info("Starting TUI")
         tui = TUI()
         tui.run()
     else:
         #run the by default gui
-        pass
+        logger.info("Starting GUI")
+        gui = GUI()
+        gui.run()

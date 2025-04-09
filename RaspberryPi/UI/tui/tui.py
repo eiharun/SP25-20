@@ -84,8 +84,8 @@ class TUICommand(cmd.Cmd):
             # Expected to recieve an ACK with ack# = prev seq#+1, cmd=0, length=0, and data=cmd
             print(f"Recieved Headers: {seq} {ack} {cmd} {length}")
             print(f"Recieved Ack: {data}")
-            print(f"\tSignal Strength: {rfm95.last_rssi}")
-            print(f"\tSNR: {rfm95.last_snr}")
+            print(f"\tSignal Strength: {self.rfm95.last_rssi}")
+            print(f"\tSNR: {self.rfm95.last_snr}")
         
     def do_cutdown(self):
         """"Cutdown the balloon"""
