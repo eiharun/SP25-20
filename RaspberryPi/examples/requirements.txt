@@ -1,1 +1,1 @@
-adafruit-circuitpython-rfm9xd
+adafruit-circuitpython-rfm9x

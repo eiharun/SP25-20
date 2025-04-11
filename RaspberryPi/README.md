@@ -1,4 +1,4 @@
-# User Inerface in Python
+# User Inerface in Python [UI](UI/)
 
 ## Directions
 
@@ -46,11 +46,45 @@
 
 > To deactivate the virtual environment, run `deactivate` in the terminal.
 
-## Dependencies C++ ONLY
+## How to use UI module
 
-- RadioHead Library for RMF95
-  - https://github.com/hallard/RadioHead
-- easy-install-bcm2835
-  - https://github.com/szantaii/easy-install-bcm2835
+Assuing venv is set up, type
 
-RadioHead depends on bcm2835 for GPIO control
+```bash
+export PYTHONPATH={PATH TO UI FOLDER}
+```
+
+> For example, if the UI directory is in my current directory <br> > `export PYTHONPATH=./UI`
+
+After this you can use
+
+```bash
+python3 -m UI {followed by flags}
+```
+
+to run the program
+
+For help, run
+
+```bash
+python3 -m UI [-h|--help]
+
+usage: __main__.py [-h] [-t] [-D]
+
+optional arguments:
+  -h, --help   show this help message and exit
+  -t, --tui    Launch textual user interface
+  -D, --debug  Enable debug logging
+```
+
+## RFM95 Wiring
+
+| RFM95 Pin | Raspberry Pi Pin |
+| --------- | ---------------- |
+| Vin       | 3.3V             |
+| GND       | GND              |
+| SCK       | GPIO 11 (SCLK)   |
+| MISO      | GPIO 9 (MISO)    |
+| MOSI      | GPIO 10 (MOSI)   |
+| CS        | GPIO 20          |
+| RST       | GPIO 19          |

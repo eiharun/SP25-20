@@ -70,68 +70,58 @@ bool resend = false;
 bool valid_cmd = false;
 
 void loop() {
-  delay(1000);                        // Wait 1 second between transmits, could also 'sleep' here!
-  Serial.println("Type data (under 10 char)");  // Send a message to rf95_server
-
+  // delay(1000);                        // Wait 1 second between transmits, could also 'sleep' here!
+  Serial.println("Type data (under 10 char) Ex. \"OPEN\"");  // Send a message to rf95_server
   char input[10]="";
-  while(input[0]==0){
-    Serial.println("IDLE");
-    Serial.readBytesUntil('\n', input, 10);
-    uint8_t buf[RH_RF95_MAX_MESSAGE_LEN];
-    uint8_t len = sizeof(buf);
+  Serial.println("\n\nWaiting for CMD input...");
+  while (Serial.available() == 0) {
     if (rf95.waitAvailableTimeout(RX_TIMEOUT)) {
-      // Should be a reply message for us now
+    // Should be a reply message for us now
       if (rf95.recv(buf, &len)) {
         digitalWrite(RX_LED, HIGH);
-        RH_RF95::printBuffer("Received: ", buf, len);
-        Serial.print("RSSI: ");
+        RH_RF95::printBuffer("\nReceived: ", buf, len);
+        Serial.print("\tRSSI: ");
         Serial.println(rf95.lastRssi(), DEC);
+        Serial.print("\tSNR: ");
+        Serial.println(rf95.lastSNR(), DEC);
       } else {
         Serial.println("Receive failed");
       }
-      
-    } 
+    }  
   }
-  /*Simplified Packet format: DEPRICATED (UTILIZE RADIOHEAD PACKET HEADERS)
-   * First Byte:  2 SYN; 1 ACK; 3 SYN/ACK
-   * Second Byte: Seq #
-   * Third Byte:  Ack #
-   * Fourth Byte: Tag (i.e. command #) 0 IDLE; 1 CUTDOWN; 64 OPEN (x seconds); 194 TEST
-   * Fifth Byte:  Data Length (n)
-   * Sixth Byte:  Checksum (for now disable checking)
-   * 6+nth Byte:  Data Payload 
-   */
-  uint8_t* data[10];
-  memset(data,0,10);
+
+  Serial.readBytesUntil('\n', input, 10);
+  uint8_t buf[RH_RF95_MAX_MESSAGE_LEN];
+  uint8_t len = sizeof(buf);
+  
+  uint8_t* data[4];
+  memset(data,0,4);
   int data_len=2;
   char* sbstr_ptr = strstr(input,"OPEN");
   if(sbstr_ptr!=NULL){
     data[0] = (uint8_t*)5;
-    data[1] = (uint8_t*)atoi((char*)input[sbstr_ptr-input]);
+    // data[1] = (uint8_t*)atoi((char*)input[sbstr_ptr-input]);
     valid_cmd = true;
   }
   else{
-    data[0]=(uint8_t*)255;
+    // data[0]=(uint8_t*)255;
     valid_cmd = false;
   }
-    if(valid_cmd){
+  if(valid_cmd){
     Serial.println("Sending...");
     unsigned long start = millis();
     
     // radiopacket[4] = (char)data_len;
-    memcpy(radiopacket, data, 10);
+    memcpy(radiopacket, data, 4);
     // radiopacket[0] = 2;
     // radiopacket[19] = 0;
-    RH_RF95::printBuffer("Received: ", (uint8_t*)radiopacket, 10);
+    RH_RF95::printBuffer("Sending: ", (uint8_t*)radiopacket, 10);
     digitalWrite(TX_LED, HIGH);
-    delay(10);
     rf95.send((uint8_t *)radiopacket, 4);
-
     // Serial.println("Waiting for packet to complete...");
     delay(10);
     rf95.waitPacketSent();
     
-
     digitalWrite(TX_LED, LOW);
     // Now wait for a reply
     uint8_t buf[RH_RF95_MAX_MESSAGE_LEN];
@@ -148,81 +138,11 @@ void loop() {
         Serial.println("Receive failed");
       }
     } else {
-      Serial.println("No reply, resending [TODO]");
-      resend = true;
+      Serial.println("No reply, Timeout");
     }
-    digitalWrite(RX_LED, LOW);
     delay(50);
-    if (!resend) {
-      Serial.println("Sending SYN/ACK...");
-      digitalWrite(TX_LED, HIGH);
-      delay(10);
-      rf95.send((uint8_t *)radiopacket, 4);
-
-      // Serial.println("Waiting for packet to complete...");
-      delay(10);
-      rf95.waitPacketSent();
-      digitalWrite(TX_LED, LOW);
-    }
-    else{
-      int cnt=0;
-      while(resend){
-        radiopacket[0] = 2;
-        radiopacket[1]++;
-
-        Serial.print("Resending... #");
-        Serial.println(cnt);
-        digitalWrite(TX_LED, HIGH);
-        delay(10);
-        rf95.send((uint8_t *)radiopacket, 20);
-
-        // Serial.println("Waiting for packet to complete...");
-        delay(10);
-        rf95.waitPacketSent();
-        digitalWrite(TX_LED, LOW);
-        uint8_t buf[RH_RF95_MAX_MESSAGE_LEN];
-        uint8_t len = sizeof(buf);
-        Serial.println("Waiting for ACK resend...");
-        if (rf95.waitAvailableTimeout(RX_TIMEOUT)) {
-          // Should be a reply message for us now
-          if (rf95.recv(buf, &len)) {
-            digitalWrite(RX_LED, HIGH);
-            RH_RF95::printBuffer("Received: ", buf, len);
-            Serial.print("RSSI: ");
-            Serial.println(rf95.lastRssi(), DEC);
-          } else {
-            Serial.println("Receive failed");
-          }
-          digitalWrite(RX_LED, LOW);
-
-          radiopacket[0] = 3;
-          radiopacket[2] = buf[3]+1;
-          radiopacket[7] = 0;
-
-          Serial.println("Sending SYN/ACK...");
-          digitalWrite(TX_LED, HIGH);
-          delay(10);
-          rf95.send((uint8_t *)radiopacket, 20);
-
-          // Serial.println("Waiting for packet to complete...");
-          delay(10);
-          rf95.waitPacketSent();
-          digitalWrite(TX_LED, LOW);
-          resend = false;
-        } else {
-          Serial.println("No reply, resending [TODO]");
-          resend = true;
-        }
-        if(cnt>=10){
-          break;
-        }
-        cnt++;
-      }
-      if(resend){
-        Serial.println("Exceeded retries");
-      }
-      
-    }
+    digitalWrite(RX_LED, LOW);
+  
     unsigned long end = millis();
 
 
