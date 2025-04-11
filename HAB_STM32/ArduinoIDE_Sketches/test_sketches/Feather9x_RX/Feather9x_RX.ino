@@ -21,7 +21,7 @@
 #define GPS_TX 5
 #define GPS_RX 4
 
-#define TX_LED      A5
+#define TX_LED      A4
 #define RX_LED      A6
 // Change to 434.0 or other frequency, must match RX's freq!
 #define RF95_FREQ 915.0
@@ -57,6 +57,10 @@ void setup() {
   pinMode(RX_LED, OUTPUT);
   digitalWrite(RFM95_RST, HIGH);
 
+  digitalWrite(TX_LED, HIGH);
+  delay(500);
+  digitalWrite(TX_LED, LOW);
+
   Serial.begin(115200);
   while (!Serial) delay(1);
   delay(100);
@@ -89,7 +93,6 @@ void setup() {
     while(1);
   }
 
-  Serial.println("LoRa RX 8888                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                cccccccccc,Test!");
 
   // manual reset
   digitalWrite(RFM95_RST, LOW);

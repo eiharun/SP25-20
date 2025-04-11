@@ -46,16 +46,15 @@
 
 > To deactivate the virtual environment, run `deactivate` in the terminal.
 
-
 ## How to use UI module
 
-Assuing venv is set up, type 
+Assuing venv is set up, type
 
 ```bash
 export PYTHONPATH={PATH TO UI FOLDER}
 ```
-> For example, if the UI directory is in my current directory <br>
-> `export PYTHONPATH=./UI`
+
+> For example, if the UI directory is in my current directory <br> > `export PYTHONPATH=./UI`
 
 After this you can use
 
@@ -78,11 +77,14 @@ optional arguments:
   -D, --debug  Enable debug logging
 ```
 
-## Dependencies C++ ONLY
+## RFM95 Wiring
 
-- RadioHead Library for RMF95
-  - https://github.com/hallard/RadioHead
-- easy-install-bcm2835
-  - https://github.com/szantaii/easy-install-bcm2835
-
-RadioHead depends on bcm2835 for GPIO control
+| RFM95 Pin | Raspberry Pi Pin |
+| --------- | ---------------- |
+| Vin       | 3.3V             |
+| GND       | GND              |
+| SCK       | GPIO 11 (SCLK)   |
+| MISO      | GPIO 9 (MISO)    |
+| MOSI      | GPIO 10 (MOSI)   |
+| CS        | GPIO 20          |
+| RST       | GPIO 19          |

@@ -275,7 +275,7 @@ class RFM95Wrapper():
                  SCK:DigitalInOut = board.SCK,
                  MOSI:DigitalInOut = board.MOSI, 
                  MISO:DigitalInOut = board.MISO,
-                 CS:DigitalInOut = digitalio.DigitalInOut(board.D26),
+                 CS:DigitalInOut = digitalio.DigitalInOut(board.D20),
                  RESET:DigitalInOut = digitalio.DigitalInOut(board.D19),
                  FREQ:float = 915.0):
         self.spi = busio.SPI(SCK, MOSI=MOSI, MISO=MISO)

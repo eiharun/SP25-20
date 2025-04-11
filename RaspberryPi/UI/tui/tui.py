@@ -1,6 +1,7 @@
 from rfm95api import *
 import logging
 import cmd
+from threading import Thread, Lock, Event
 
 logger = logging.getLogger(__name__)
 
@@ -13,6 +14,7 @@ class TUI:
         constructor = RFM95Wrapper()
         self.rfm95 = constructor.construct()
         logger.debug("RFM95 Constructed")
+        self._lock = Lock()
 
     def run(self):
         try:
@@ -63,6 +65,7 @@ class TUICommand(cmd.Cmd):
         if not self.verify_send_on_idle():
             return
         print("Waiting for IDLE (balloon to be in range)")
+        self.rfm95.receive(timeout=5)
         print(f"Opening vent for {duration} {'seconds' if unit == 's' else 'minutes'}")
         cmd = 0
         if unit == 's':
@@ -70,8 +73,7 @@ class TUICommand(cmd.Cmd):
         elif unit == 'm':
             cmd = Commands.OPENm.value
         assert cmd != 0
-        num_bytes = self.byte_length(duration)
-        payload = duration.to_bytes(num_bytes, byteorder='big')
+        num_bytes, payload = self.byte_w_len(duration)
         logger.debug(f"Verification: {duration}:{payload}:{num_bytes}:{int.from_bytes(payload,'big')}")
         #TODO: Wait for idle
         self.rfm95.send(payload, seq=self.seq, ack=0, CMD=cmd, length=num_bytes)
@@ -98,6 +100,10 @@ class TUICommand(cmd.Cmd):
             return
         
     #----------------MISC---------------------------------#    
+        
+    def preloop(self):
+        """Initialization before the command loop starts."""
+        print("Starting the CLI...")
         
     def do_disable_idle(self):
         """ONLY USE IF YOU KNOW WHAT YOU'RE DOING \nWill disable sending on recieved IDLE. \n Will not wait to recieve an IDLE from the balloon before sending"""
@@ -146,5 +152,14 @@ class TUICommand(cmd.Cmd):
         else:
             return True
         
-    def byte_length(self,i):
-        return (i.bit_length() + 7) // 8
+    # def byte_length(self,i):
+        # return (i.bit_length() + 7) // 8
+
+    def byte_w_len(self, i:str):
+        """
+        Returns the number of bytes and the byte array of the given String.
+        """
+        assert isinstance(i, str), "Argument in byte_w_len() must be a string"
+        num_bytes = (i.bit_length() + 7) // 8
+        return num_bytes, i.to_bytes(num_bytes, byteorder='big')
+        
