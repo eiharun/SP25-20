@@ -1,8 +1,4 @@
-<<<<<<< HEAD
-//#define LOGGING //COMMENT TO DISABLE LOGGING AND DEPENDENCIES (if you don't have GPS or SD card connected)
-=======
 #define LOGGING //COMMENT TO DISABLE LOGGING AND DEPENDENCIES (if you don't have GPS or SD card connected)
->>>>>>> ce5c8f1d3948342ad1f6c0ffc5b885a933224425
 
 #include <SPI.h>
 #include <RH_RF95.h>

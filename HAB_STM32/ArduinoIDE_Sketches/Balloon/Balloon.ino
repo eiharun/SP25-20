@@ -1,8 +1,4 @@
-<<<<<<< HEAD
-//#define LOGGING //COMMENT TO DISABLE LOGGING AND DEPENDENCIES (if you don't have GPS or SD card connected)
-=======
 #define LOGGING //COMMENT TO DISABLE LOGGING AND DEPENDENCIES (if you don't have GPS or SD card connected)
->>>>>>> ce5c8f1d3948342ad1f6c0ffc5b885a933224425
 
 #include <SPI.h>
 #include <RH_RF95.h>
@@ -230,6 +226,7 @@ void loop() {
       enterSleepMode();
       pauseTimer2();
       packetReceived = false;
+      Serial.println("Exiting sleep mode\n");
 
 #ifdef LOGGING
       writeLog("IDLE", (uint8_t*)"Idle Sent");
@@ -244,25 +241,25 @@ void loop() {
        * If reply, change state to RECV
        */
 
-      unsigned long startTime = millis();
-      bool received = false;
+      // unsigned long startTime = millis();
+      // bool received = false;
 
-      while (millis() - startTime >= AWAIT_TIMEOUT) {
-        if (rf95.available()){
-          received = true;
-          break;
-        }
-      }
+      // while (millis() - startTime >= AWAIT_TIMEOUT) {
+      //   if (rf95.available()){
+      //     received = true;
+      //     break;
+      //   }
+      // }
       
-      if (received){
-        current_state = RECV;
-        break;
-      }
+      // if (received){
+      //   current_state = RECV;
+      //   break;
+      // }
 
-      else{
-        current_state = IDLE;
-        break;
-      }
+      // else{
+      //   current_state = IDLE;
+      //   break;
+      // }
 
       Serial.println("AWAIT STATE");
       if (rf95.waitAvailableTimeout(AWAIT_TIMEOUT)) {
