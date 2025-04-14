@@ -18,7 +18,7 @@ class TUI:
                  SCK:DigitalInOut = board.SCK,
                  MOSI:DigitalInOut = board.MOSI, 
                  MISO:DigitalInOut = board.MISO,
-                 CS:DigitalInOut = digitalio.DigitalInOut(board.D26),
+                 CS:DigitalInOut = digitalio.DigitalInOut(board.D20),
                  RESET:DigitalInOut = digitalio.DigitalInOut(board.D19),
                  FREQ:float = 915.0):
         constructor = RFM95Wrapper(SCK, MOSI, MISO, CS, RESET, FREQ)

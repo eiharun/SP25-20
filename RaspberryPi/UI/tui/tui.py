@@ -1,6 +1,7 @@
 from rfm95api import *
 import logging
 import cmd
+from threading import Thread, Lock, Event
 
 logger = logging.getLogger(__name__)
 
@@ -12,16 +13,27 @@ class TUI:
     def __init__(self):
         constructor = RFM95Wrapper()
         self.rfm95 = constructor.construct()
+        self._lock = Lock()
+        self._event = Event()
+        self._idleThread = Thread(target=self.look_for_idle)
         logger.debug("RFM95 Constructed")
+
+    def look_for_idle(self):
+        while(True):
+            recv = self.rfm95.receive()
+            if recv:
+                logger.info(f"-------{recv}--------")
 
     def run(self):
         try:
             logger.debug("Starting TUI")
             print("Starting TUI")
             tui_command = TUICommand(self.rfm95)
+            # self._idleThread.start()
             tui_command.cmdloop()
         except KeyboardInterrupt:
             print()
+            # self._idleThread.join()
             logger.debug("Exiting Ground Station TUI")
             print("Exiting Ground Station TUI")
             exit(0)
@@ -62,7 +74,10 @@ class TUICommand(cmd.Cmd):
         assert unit == 's' or unit == 'm'
         if not self.verify_send_on_idle():
             return
-        print("Waiting for IDLE (balloon to be in range)")
+        if self.send_on_idle:
+            print("Waiting for IDLE (balloon to be in range)")
+            # idle = self.rfm95.receive(timeout=5)
+            
         print(f"Opening vent for {duration} {'seconds' if unit == 's' else 'minutes'}")
         cmd = 0
         if unit == 's':
@@ -80,12 +95,12 @@ class TUICommand(cmd.Cmd):
         if recv is None:
             print("No Ack recieved. Verify gps data before resending")
         else:
-            seq,ack,cmd,length,data = extractHeaders(recv)
+            seq,ack,cmd,length,data = self.rfm95.extractHeaders(recv)
             # Expected to recieve an ACK with ack# = prev seq#+1, cmd=0, length=0, and data=cmd
             print(f"Recieved Headers: {seq} {ack} {cmd} {length}")
             print(f"Recieved Ack: {data}")
-            print(f"\tSignal Strength: {rfm95.last_rssi}")
-            print(f"\tSNR: {rfm95.last_snr}")
+            print(f"\tSignal Strength: {self.rfm95.last_rssi}")
+            print(f"\tSNR: {self.rfm95.last_snr}")
         
     def do_cutdown(self):
         """"Cutdown the balloon"""
