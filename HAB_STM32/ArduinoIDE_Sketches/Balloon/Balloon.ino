@@ -1,4 +1,12 @@
+<<<<<<< HEAD
 #define LOGGING //COMMENT TO DISABLE LOGGING AND DEPENDENCIES (if you don't have GPS or SD card connected)
+=======
+//<<<<<<< HEAD
+//#define LOGGING //COMMENT TO DISABLE LOGGING AND DEPENDENCIES (if you don't have GPS or SD card connected)
+//=======
+#define LOGGING //COMMENT TO DISABLE LOGGING AND DEPENDENCIES (if you don't have GPS or SD card connected)
+//>>>>>>> ce5c8f1d3948342ad1f6c0ffc5b885a933224425
+>>>>>>> 5e5a3cfce85df01eca02a0c8a2036f95a90d24e2
 
 #include <SPI.h>
 #include <RH_RF95.h>
@@ -49,16 +57,14 @@ File logFile;
 char radiopacket[20] = "";
 Servo motor;
 
-volatile bool packetReceived = false;
-
 void setupTimer2_1Hz() {
   // Enable TIM2 clock
   RCC->AHB1ENR |= RCC_APB1ENR1_TIM2EN;
-
+  TIM2->CNT = 0;
   TIM2->PSC = 64000 - 1;   // Prescaler: 64 MHz / 64k = 1 kHz
   TIM2->ARR = 300000 - 1;    // Auto-reload: 300,000 ms = 5 min
   TIM2->DIER |= TIM_DIER_UIE;   // Enable update interrupt
-  TIM2->CR1 |= TIM_CR1_CEN;     // Enable counter
+  TIM2->CR1 &= ~TIM_CR1_CEN;     // Disable counter
 
   NVIC_EnableIRQ(TIM2_IRQn);    // Enable interrupt in NVIC
 }
@@ -68,7 +74,8 @@ void pauseTimer2() {
   TIM2->DIER &= ~TIM_DIER_UIE;   // Disable update interrupt
 }
 
-void resumeTimer2() {
+void resetTimer2() {
+  TIM2->CNT = 0;
   TIM2->DIER |= TIM_DIER_UIE;    // Enable update interrupt
   TIM2->CR1 |= TIM_CR1_CEN;      // Enable counter
 }
@@ -153,7 +160,7 @@ void setup() {
 
   // interrupt setup
   pinMode(RFM95_INT, INPUT); // needed for interrupt detection
-  attachInterrupt(digitalPinToInterrupt(RFM95_INT), wakeUpRadio, RISING);
+  
 
   setupTimer2_1Hz();
   pauseTimer2();
@@ -167,14 +174,9 @@ const int interval = 5 * 60 * 1000; // 5 minutes between idle packets, can chang
 unsigned long lastWakeTime = 0;
 unsigned long lastReceivedTime = 0;
 
-void wakeUpRadio() {
-  HAL_ResumeTick(); // from STM32 forum
-  packetReceived = true;
-}
-
 // from STM32 forum
 void enterSleepMode(){
-  resumeTimer2();
+  resetTimer2();
   HAL_SuspendTick();
   HAL_PWR_EnterSLEEPMode(PWR_MAINREGULATOR_ON, PWR_SLEEPENTRY_WFI);
 }
@@ -182,6 +184,7 @@ void enterSleepMode(){
 void TIM2_IRQHandler(void) {
   if (TIM2->SR & TIM_SR_UIF) {         // Check update interrupt flag
     TIM2->SR &= ~TIM_SR_UIF;           // Clear the flag 
+    TIM2->CNT = 0;
 
     HAL_ResumeTick();
     Serial.println("timer 2 expired\n");
@@ -220,13 +223,15 @@ void loop() {
       radiopacket[4] = 0;
       rf95.send((uint8_t*)radiopacket, sizeof(radiopacket));
       Serial.println("Sleep mode");
-      // start timer to break sleep
-      resumeTimer2();
+      // start timer to break sleep, only timer breaks sleep mode
       Serial.println("entering sleep mode\n");
       enterSleepMode();
       pauseTimer2();
+<<<<<<< HEAD
       packetReceived = false;
       Serial.println("Exiting sleep mode\n");
+=======
+>>>>>>> 5e5a3cfce85df01eca02a0c8a2036f95a90d24e2
 
 #ifdef LOGGING
       writeLog("IDLE", (uint8_t*)"Idle Sent");
