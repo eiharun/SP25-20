@@ -1,18 +1,8 @@
-<<<<<<< HEAD
 #define LOGGING //COMMENT TO DISABLE LOGGING AND DEPENDENCIES (if you don't have GPS or SD card connected)
-=======
-//<<<<<<< HEAD
-//#define LOGGING //COMMENT TO DISABLE LOGGING AND DEPENDENCIES (if you don't have GPS or SD card connected)
-//=======
-#define LOGGING //COMMENT TO DISABLE LOGGING AND DEPENDENCIES (if you don't have GPS or SD card connected)
-//>>>>>>> ce5c8f1d3948342ad1f6c0ffc5b885a933224425
->>>>>>> 5e5a3cfce85df01eca02a0c8a2036f95a90d24e2
 
 #include <SPI.h>
 #include <RH_RF95.h>
 #include <Servo.h>
-#include <Arduino.h>
-#include <Wire.h>
 
 #ifdef LOGGING
 #include <SD.h>
@@ -35,7 +25,6 @@ void interpret_command(uint8_t* recv_buf);
 
 #define RF95_FREQ 915.0
 #define AWAIT_TIMEOUT 5000  //15000 /* Time in MS to wait after IDLE packet was sent to recieve a reply. MAX is 65535 */
-#define INACTIVITY_TIMEOUT 300000
 
 #define SERVO_ANGLE 100
 
@@ -57,29 +46,6 @@ File logFile;
 char radiopacket[20] = "";
 Servo motor;
 
-void setupTimer2_1Hz() {
-  // Enable TIM2 clock
-  RCC->AHB1ENR |= RCC_APB1ENR1_TIM2EN;
-  TIM2->CNT = 0;
-  TIM2->PSC = 64000 - 1;   // Prescaler: 64 MHz / 64k = 1 kHz
-  TIM2->ARR = 300000 - 1;    // Auto-reload: 300,000 ms = 5 min
-  TIM2->DIER |= TIM_DIER_UIE;   // Enable update interrupt
-  TIM2->CR1 &= ~TIM_CR1_CEN;     // Disable counter
-
-  NVIC_EnableIRQ(TIM2_IRQn);    // Enable interrupt in NVIC
-}
-
-void pauseTimer2() {
-  TIM2->CR1 &= ~TIM_CR1_CEN;     // Disable counter
-  TIM2->DIER &= ~TIM_DIER_UIE;   // Disable update interrupt
-}
-
-void resetTimer2() {
-  TIM2->CNT = 0;
-  TIM2->DIER |= TIM_DIER_UIE;    // Enable update interrupt
-  TIM2->CR1 |= TIM_CR1_CEN;      // Enable counter
-}
-
 void setup() {
   pinMode(RFM95_RST, OUTPUT);
   pinMode(TX_LED, OUTPUT);
@@ -87,7 +53,7 @@ void setup() {
   digitalWrite(RFM95_RST, HIGH);
 
   /* Attach Servo Motor */
-  motor.attach(SERVO_PIN, 500, 2400);
+  motor.attach(SERVO_PIN);
   if (!motor.attached()) {
   Serial.print("Servo motor not connected");
   }
@@ -157,46 +123,16 @@ void setup() {
     while (1)
       ;
   }
-
-  // interrupt setup
-  pinMode(RFM95_INT, INPUT); // needed for interrupt detection
-  
-
-  setupTimer2_1Hz();
-  pauseTimer2();
-
   current_state = IDLE;
 }
 uint8_t recv_buf[RH_RF95_MAX_MESSAGE_LEN];
 uint8_t recv_buf_len = sizeof(recv_buf);
-
-const int interval = 5 * 60 * 1000; // 5 minutes between idle packets, can change
-unsigned long lastWakeTime = 0;
-unsigned long lastReceivedTime = 0;
-
-// from STM32 forum
-void enterSleepMode(){
-  resetTimer2();
-  HAL_SuspendTick();
-  HAL_PWR_EnterSLEEPMode(PWR_MAINREGULATOR_ON, PWR_SLEEPENTRY_WFI);
-}
-
-void TIM2_IRQHandler(void) {
-  if (TIM2->SR & TIM_SR_UIF) {         // Check update interrupt flag
-    TIM2->SR &= ~TIM_SR_UIF;           // Clear the flag 
-    TIM2->CNT = 0;
-
-    HAL_ResumeTick();
-    Serial.println("timer 2 expired\n");
-  }
-}
 
 
 /* -----------LOOP---------- */
 /* ------------------------- */
 
 void loop() {
-  unsigned long currentMillis = millis();
 #ifdef LOGGING
   /* Gather Data from GPS */
   Serial.println("");
@@ -214,24 +150,13 @@ void loop() {
 
   Serial.println("");
   switch (current_state) {
-    case IDLE: {
-
+    case IDLE:
       /* Send IDLE packet, change state to AWAIT */
       Serial.println("IDLE STATE");
       // strcpy(radiopacket, "IDLE");
       radiopacket[0] = 0x1;
       radiopacket[4] = 0;
       rf95.send((uint8_t*)radiopacket, sizeof(radiopacket));
-      Serial.println("Sleep mode");
-      // start timer to break sleep, only timer breaks sleep mode
-      Serial.println("entering sleep mode\n");
-      enterSleepMode();
-      pauseTimer2();
-<<<<<<< HEAD
-      packetReceived = false;
-      Serial.println("Exiting sleep mode\n");
-=======
->>>>>>> 5e5a3cfce85df01eca02a0c8a2036f95a90d24e2
 
 #ifdef LOGGING
       writeLog("IDLE", (uint8_t*)"Idle Sent");
@@ -239,33 +164,11 @@ void loop() {
 
       current_state = AWAIT;
       break;
-    }
-    case AWAIT: {
+    case AWAIT:
       /* Wait 'AWAIT_TIMEOUT' ms for reply
        * If no reply, change state to IDLE, sleep for 'y' seconds/minutes
        * If reply, change state to RECV
        */
-
-      // unsigned long startTime = millis();
-      // bool received = false;
-
-      // while (millis() - startTime >= AWAIT_TIMEOUT) {
-      //   if (rf95.available()){
-      //     received = true;
-      //     break;
-      //   }
-      // }
-      
-      // if (received){
-      //   current_state = RECV;
-      //   break;
-      // }
-
-      // else{
-      //   current_state = IDLE;
-      //   break;
-      // }
-
       Serial.println("AWAIT STATE");
       if (rf95.waitAvailableTimeout(AWAIT_TIMEOUT)) {
         if (rf95.recv(recv_buf, &recv_buf_len)) {
@@ -283,9 +186,7 @@ void loop() {
         delay(1000);  //artificially sleep
       }
       break;
-    }
-
-    case RECV: {
+    case RECV:
       /* Process packet, send ACK (possibly with telemetry)
        * Change state to AWAKE 
        */
@@ -309,16 +210,13 @@ void loop() {
       memset(recv_buf, 0, recv_buf_len); /* Clear buffer */
       current_state = AWAKE;
       break;
-    }
-    case AWAKE: {
+    case AWAKE:
       /* If inactivity (nothing recieved) after z minutes, go back to IDLE state 
        *    (for now reset to go back to idle)
        * Continuous recieving mode
        * If something is recieved, change state to RECV
        */
-
       if (rf95.available()) {
-        lastReceivedTime = millis();
         Serial.println("AWAKE STATE");
         if (rf95.recv(recv_buf, &recv_buf_len)) {
           current_state = RECV;
@@ -326,15 +224,10 @@ void loop() {
           /* Failed to recv (err) */
         }
       }
-
-      else if (millis() - lastReceivedTime > INACTIVITY_TIMEOUT) {
-        current_state = IDLE;
-      }
       break;
     default:
       /* Should never get here */
       break;
-    }
   }
 }
 
@@ -374,9 +267,9 @@ bool writeLog(char* type, uint8_t* data) {
 
 void interpret_command(uint8_t* recv_buf){
   if(recv_buf[0] = (uint8_t)5){
-    uint8_t dur = recv_buf[2];
+    // uint8_t dur = recv_buf[2];
     motor.write(SERVO_ANGLE);
-    delay(1000 * dur);
+    delay(1000);
     motor.write(0);
   }
 }

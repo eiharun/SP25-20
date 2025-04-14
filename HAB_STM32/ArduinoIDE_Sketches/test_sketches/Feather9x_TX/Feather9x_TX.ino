@@ -72,7 +72,7 @@ void setup() {
   rf95.setTxPower(23, false);
   rf95.setSpreadingFactor(12);
   rf95.setSignalBandwidth(125000);
-  #define RX_TIMEOUT 5000
+  #define RX_TIMEOUT 15000
   #define DELAY_TX 1500
   digitalWrite(TX_LED, LOW);
 }

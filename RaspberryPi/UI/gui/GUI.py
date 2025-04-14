@@ -3,42 +3,36 @@ from tkinter import messagebox
 from tkinter import scrolledtext
 
 from rfm95api import *
-import board
-import digitalio
 import logging
-import cmd
 import time
 
 # also log everything
 logger = logging.getLogger(__name__)
 
-class TUI:
-    # pass 
-    def __init__(self, 
-                 SCK:DigitalInOut = board.SCK,
-                 MOSI:DigitalInOut = board.MOSI, 
-                 MISO:DigitalInOut = board.MISO,
-                 CS:DigitalInOut = digitalio.DigitalInOut(board.D20),
-                 RESET:DigitalInOut = digitalio.DigitalInOut(board.D19),
-                 FREQ:float = 915.0):
-        constructor = RFM95Wrapper(SCK, MOSI, MISO, CS, RESET, FREQ)
-        logger.debug("RFM95 Constructed")
-        self.rfm95 = constructor.construct()
-
-    def get_rfm95(self):
-        return self.rfm95
-
+class GUI:
+    def __init__(self):
+        root = tk.Tk()
+        trans = Trans(root)
+        root.title("Balloon Control Interface")
+        
+    def run(self):
+        try:
+            root.mainloop()
+        except KeyboardInterrupt:
+            print()
+            logger.debug("Exiting Ground Station GUI")
+            print("Exiting Ground Station GUI")
+            exit(0)
 
 class Trans:
-    def __init__(self, root, tui: TUI):
+    def __init__(self, root):
         self.root = root
-        self.tui = tui
-        self.rfm95 = tui.get_rfm95()
-        self.cmd = Commands.DEFAULT.value
+        self.rfm95 = RFM95Wrapper().construct()
+        logger.debug("RFM95 Constructed")
 
-        # cutdown, idle, and entry
-        self.cutdown_button = tk.Button(root, text="Cutdown", width=10, height=2, bg='red', font=("Arial", 12), command=self.check_cutdown)
-        self.cutdown_button.grid(row=6, column=0, columnspan=1, padx=5, pady=5)
+        # cutoff, idle, and entry
+        self.cutoff_button = tk.Button(root, text="Cutoff", width=10, height=2, bg='red', font=("Arial", 12), command=self.check_cutoff)
+        self.cutoff_button.grid(row=6, column=0, columnspan=1, padx=5, pady=5)
 
         self.idle_button = tk.Button(root, text="Idle", width=10, height=2, font=("Arial", 12), command=self.check_idle)
         self.idle_button.grid(row=6, column=2, columnspan=1, padx=5, pady=5)
@@ -106,17 +100,12 @@ class Trans:
             self.result_label.config(text="Please enter a valid number", fg="red")
             self.log("Invalid entry: not a number", tag="error")
             return
-        self.entry.delete(0, tk.END)
-        # ask for time unit
         self.lockoutstart()
         time_unit = self.ask_time_unit()
         if time_unit == "seconds":
             commands = 'OPENs'
-            self.cmd = Commands.OPENs.value
         else:
             commands = 'OPENm'
-            self.cmd = Commands.OPENm.value
-        # confirmation
         if messagebox.askokcancel("Open Confirmation", f"Are you sure you want to open for {time_val} {time_unit}?"):
             self.result_label.config(text= f"Opening for {time_val} {time_unit}", fg="black")
             self.log(f"Opening for {time_val} {time_unit}",tag='info')
@@ -127,19 +116,19 @@ class Trans:
             
         # re-enable
         self.lockoutend()
+        self.entry.delete(0, tk.END)
         
 
-    # cutdown, confirmation
-    def check_cutdown(self):
+    # cutoff, confirmation
+    def check_cutoff(self):
         self.lockoutstart()
-        self.cmd = Commands.CUTDOWN.value
-        if messagebox.askokcancel("Cutdown Confirmation", "Are you sure you want to cutdown?"):
-            self.log("Sending CUTDOWN command",tag='info')
-            self.printout('CUTDOWN')
+        if messagebox.askokcancel("Cutoff Confirmation", "Are you sure you want to cutoff?"):
+            self.log("Sending CUTOFF command",tag='info')
+            self.printout('CUTOFF')
             
         else:
-            self.log("User canceled CUTDOWN command", tag="warning")
-            self.result_label.config(text= f'Cancel sending cutdown',fg='orange')
+            self.log("User canceled CUTOFF command", tag="warning")
+            self.result_label.config(text= f'Cancel sending cutoff',fg='orange')
 
         # re-enable 1.5 seconds
         self.lockoutend()
@@ -147,7 +136,6 @@ class Trans:
     # idle, no comfirmation text box
     def check_idle(self):
         self.lockoutstart()
-        self.cmd = Commands.IDLE.value
         if messagebox.askokcancel("Idle Confirmation", "Are you sure you want to send idle?"):
             self.log("Sending IDLE command",tag="info")
             self.printout('IDLE')
@@ -156,24 +144,28 @@ class Trans:
             self.log("Canceling IDLE command",tag="warning")
         self.lockoutend()
         
-    # sending and receving
+    # sending and receving, send 3 time if no ACK
     def printout(self, message):
-        
-        # encode, send, and wait for ACK
-        encode_message = message.encode('utf-8')
-        self.rfm95.send(encode_message, CMD = self.cmd)
-        response = self.rfm95.receive(timeout=7.0)  # Wait up to 7 seconds
-        if response:
-            seq, ack, cmd, length, data = self.rfm95.extractHeaders(response)
-            if ack == 1:  # or whatever you use for ACK flag
-                self.result_label.config(text= f"ACK received: {ack}", fg='green')
-                self.log(f"ACK received, Data: {data}", tag="info")
+        self.result_label.config(text= f'Sending {message}, Waiting for ACK', fg='black')
+        for i in range(3):
+            # encode, send, and wait for ACK
+            encode_message = message.encode('utf-8')
+            self.log(f"Sending: {message}, Attempt {i+1}/3",tag='info')
+            self.rfm95.send(encode_message)
+            response = self.rfm95.receive(timeout=5.0)  # Wait up to 5 seconds
+            if response:
+                seq, ack, cmd, length, data = self.rfm95.extractHeaders(response)
+                if ack == 1:  # or whatever you use for ACK flag
+                    self.result_label.config(text= f"ACK received: {response}", fg='green')
+                    self.log(f"ACK received: {response}", tag="info")
+                else:
+                    self.result_label.config(text= f"Received response, not ACK: {response}",fg='orange')
+                    self.log(f"Response received (no ACK): {response}", tag="warning")
+                break
             else:
-                self.result_label.config(text= f"Received response, not ACK: {response}",fg='orange')
-                self.log(f"Response received (no ACK): {response}", tag="warning")
-        else:
-            self.result_label.config(text= f"Timeout Waiting", fg='red')
-            self.log("Timeout waiting for ACK", tag="error")
+                self.result_label.config(text= f"Timeout Waiting", fg='red')
+                self.log("Timeout waiting for ACK", tag="error")
+                time.sleep(2) # wait 2 second before sending again
 
     def ask_time_unit(self):
         selected_unit = tk.StringVar()
@@ -201,16 +193,16 @@ class Trans:
         popup.wait_window()  # Wait until popup is closed
         return selected_unit.get()
 
-    #disable every button after send/idle/cutdown
+    #disable every button after send/idle/cutoff
     def lockoutstart(self):
         self.idle_button.config(state='disabled')
         self.entry.config(state='disabled')
-        self.cutdown_button.config(state='disabled')
+        self.cutoff_button.config(state='disabled')
         
     def lockoutend(self):
-        self.root.after(1000, lambda: self.idle_button.config(state='normal'))
-        self.root.after(1000, lambda: self.entry.config(state='normal'))
-        self.root.after(1000, lambda: self.cutdown_button.config(state='normal'))
+        self.root.after(1500, lambda: self.idle_button.config(state='normal'))
+        self.root.after(1500, lambda: self.entry.config(state='normal'))
+        self.root.after(1500, lambda: self.cutoff_button.config(state='normal'))
 
     def setup_log_tags(self):
         self.log_box.tag_config('info', foreground='black')
@@ -225,15 +217,9 @@ class Trans:
 
 # Run the App
 if __name__ == "__main__":
-    try:
-        root = tk.Tk()
-        tui = TUI()
-        trans = Trans(root,tui)
-        
-        root.title("Balloon Control Interface")
+    root = tk.Tk()
+    trans = Trans(root)
+    
+    root.title("Balloon Control Interface")
 
-        root.mainloop()
-    except KeyboardInterrupt:
-        print("Exiting...")
-
-
+    root.mainloop()
