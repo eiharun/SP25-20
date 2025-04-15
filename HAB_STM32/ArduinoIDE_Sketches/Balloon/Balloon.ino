@@ -1,53 +1,6 @@
 #define LOGGING //COMMENT TO DISABLE LOGGING AND DEPENDENCIES (if you don't have GPS or SD card connected)
 
-#include <SPI.h>
-#include <RH_RF95_CH.h>
-#include <Servo.h>
-#include <Arduino.h>
-#include <Wire.h>
-
-#ifdef LOGGING
-#include <SD.h>
-#include <TinyGPS.h>
-bool writeLog(uint8_t* data);
-#define LOG_FILENAME "log.txt"
-#endif 
-
-void interpret_command(uint8_t* recv_buf);
-
-#define RFM95_RST 2
-#define RFM95_CS 3
-#define RFM95_INT 0
-#define TX_LED A5
-#define RX_LED A6
-#define SD_CS 6
-#define SERVO_PIN 9
-#define GPS_TX 5
-#define GPS_RX 4
-
-#define RF95_FREQ 915.0
-#define AWAIT_TIMEOUT 5000  //15000 /* Time in MS to wait after IDLE packet was sent to recieve a reply. MAX is 65535 */
-#define INACTIVITY_TIMEOUT 300000
-
-#define SERVO_ANGLE 100
-
-enum state_t { IDLE,
-               AWAIT,
-               RECV,
-               AWAKE };
-state_t current_state;
-
-// Singleton instance of the radio driver
-RH_RF95_CH rf95(RFM95_CS, RFM95_INT);
-
-#ifdef LOGGING
-HardwareSerial Serial1(GPS_RX, GPS_TX);
-TinyGPS gps;
-File logFile;
-#endif
-
-char radiopacket[20] = "";
-Servo motor;
+#include "Balloon.h"
 
 void setupTimer2_1Hz() {
   // Enable TIM2 clock
@@ -159,6 +112,7 @@ void setup() {
 
   current_state = IDLE;
 }
+
 uint8_t recv_buf[RH_RF95_MAX_MESSAGE_LEN];
 uint8_t recv_buf_len = sizeof(recv_buf);
 
@@ -183,9 +137,8 @@ void TIM2_IRQHandler(void) {
   }
 }
 
-
-/* -----------LOOP---------- */
-/* ------------------------- */
+/* ---------------------LOOP-------------------- */
+/* --------------------------------------------- */
 int seq=0;
 void loop() {
   unsigned long currentMillis = millis();
@@ -210,12 +163,10 @@ void loop() {
 
       /* Send IDLE packet, change state to AWAIT */
       Serial.println("IDLE STATE");
-      // strcpy(radiopacket, "IDLE");
-      // radiopacket[0] = 0x1;
-      // radiopacket[4] = 0;
+      /* IDLE HEADER - Seq#, Ack#(N/A), CMD-0x01, len=0 */
       rf95.setHeaders(seq,0,1,0);
-      seq=(seq+1)%255;
-      rf95.send(NULL, 0);
+      rf95.send(NULL, 0); /* Do not send any data. Only Send header with IDLE cmd */
+      seq=(seq+1)%256;
       // rf95.send((uint8_t*)radiopacket, sizeof(radiopacket));
       // Serial.println("Sleep mode");
       // // start timer to break sleep, only timer breaks sleep mode
@@ -224,11 +175,9 @@ void loop() {
       // pauseTimer2();
       // packetReceived = false;
       // Serial.println("Exiting sleep mode\n");
-
 #ifdef LOGGING
       writeLog("IDLE", (uint8_t*)"Idle Sent");
 #endif
-
       current_state = AWAIT;
       break;
     }
@@ -260,6 +209,7 @@ void loop() {
 
       Serial.println("AWAIT STATE");
       if (rf95.waitAvailableTimeout(AWAIT_TIMEOUT)) {
+        memset(recv_buf, 0, recv_buf_len);
         if (rf95.recv(recv_buf, &recv_buf_len)) {
           current_state = RECV;
         } else {
@@ -283,6 +233,9 @@ void loop() {
        */
       Serial.println("RECV STATE");
       /* Do something with recv_buf */
+      uint8_t ack = rf95.headerSeq() + 1;
+      uint8_t cmd = rf95.headerCMD();
+
       digitalWrite(RX_LED, HIGH);
       Serial.print("Got: ");
       Serial.println((char*)recv_buf);
@@ -294,12 +247,13 @@ void loop() {
 #endif
 
       interpret_command(recv_buf);
-
-      memset(radiopacket, 0, sizeof(radiopacket));
-      strcpy(radiopacket, "ACK + TELEMETRY");
-      rf95.send((uint8_t*)radiopacket, sizeof(radiopacket));
-      memset(recv_buf, 0, recv_buf_len); /* Clear buffer */
+      /* Send ACK */
+      rf95.setHeaders(seq, ack, cmd, 0);
+      rf95.send(NULL, 0);
+      seq=(seq+1)%256;
+      // memset(recv_buf, 0, recv_buf_len); /* Clear buffer */
       current_state = AWAKE;
+      lastReceivedTime=millis();
       break;
     }
     case AWAKE: {
@@ -308,10 +262,11 @@ void loop() {
        * Continuous recieving mode
        * If something is recieved, change state to RECV
        */
+      Serial.println("AWAKE STATE");
 
       if (rf95.available()) {
         lastReceivedTime = millis();
-        Serial.println("AWAKE STATE");
+        memset(recv_buf, 0, recv_buf_len);
         if (rf95.recv(recv_buf, &recv_buf_len)) {
           current_state = RECV;
         } else {
@@ -320,6 +275,7 @@ void loop() {
       }
 
       else if (millis() - lastReceivedTime > INACTIVITY_TIMEOUT) {
+        Serial.println("Awake Timeout");
         current_state = IDLE;
       }
       break;
@@ -365,10 +321,64 @@ bool writeLog(char* type, uint8_t* data) {
 #endif
 
 void interpret_command(uint8_t* recv_buf){
-  if(recv_buf[0] = (uint8_t)5){
-    uint8_t dur = recv_buf[2];
-    motor.write(SERVO_ANGLE);
-    delay(1000 * dur);
-    motor.write(0);
+  uint8_t cmd = rf95.headerCMD();
+  uint8_t length = rf95.headerLen();
+  if (cmd>0 && cmd<=11){
+    Serial.print("No payload data: ");
+    Serial.println(recv_buf[0]);
+    execute_command_0(cmd);
+  }
+  else if (cmd>11 && cmd<=193){
+    Serial.print("BCD Encoded data: ");
+    int decimal=0;
+    /* Decodes big endian decimal */
+    for (size_t i = 0; i< length;i++){
+      decimal = (decimal<<8) | recv_buf[i];
+    }
+    //Execute
+    execute_command_1(cmd, decimal);
+  }
+  // else if (cmd range){ decode and do something } // Use to expand the command set
+  else{
+    Serial.print("Undefined Command Range");
+    Serial.println(cmd);
+  }
+}
+
+void execute_command_0(uint8_t cmd){
+  switch(cmd){
+    case cIDLE: {
+      Serial.println("Idle, do nothing");
+      break;
+    }
+    case CUTDOWN: {
+      Serial.println("Cutdown");
+      break;
+    }
+    default: {
+      Serial.print("Unknown command");
+      Serial.println(cmd);
+      break;
+    }
+  }
+}
+
+void execute_command_1(uint8_t cmd, uint8_t num){
+  switch(cmd){
+    case OPENs: {
+      Serial.print("Open (s): ");
+      Serial.println(num);
+      break;
+    }
+    case OPENm: {
+      Serial.print("Open (m): ");
+      Serial.println(num);
+      break;
+    }
+    default: {
+      Serial.print("Unknown command");
+      Serial.println(cmd);
+      break;
+    }
   }
 }

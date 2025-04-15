@@ -123,7 +123,7 @@ class RFM95(RFM9x):
         # efficient and proper way to ensure a precondition that the provided
         # buffer be within an expected range of bounds. Disable this check.
         # pylint: disable=len-as-condition
-        assert 0 < len(data) <= 252
+        assert 0 <= len(data) <= 252
         # pylint: enable=len-as-condition
         self.idle()  # Stop receiving to clear FIFO and keep it clear.
         # Fill the FIFO with a packet to send.
@@ -150,7 +150,8 @@ class RFM95(RFM9x):
         else:  # use kwarg
             payload[3] = length
             self._len = length
-        payload = payload + data
+        if len(data) > 0:              
+            payload = payload + data
         # Write payload.
         self._write_from(_RH_RF95_REG_00_FIFO, payload)
         # Write payload and header length.

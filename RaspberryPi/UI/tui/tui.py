@@ -136,8 +136,18 @@ class TUICommand(cmd.Cmd):
         """"Cutdown the balloon"""
         answer = input("Are you sure you want to cutdown the balloon? y/n:")
         if answer.lower() == 'y':
-            #send cutdown
-            pass
+            self.rfm95.send(b'', seq=self.seq, ack=0, CMD=Commands.CUTDOWN.value, length=0)
+            self.seq = (self.seq+1)%256
+            recv = self.rfm95.receive(timeout=5)
+            if recv is None:
+                print("No Ack recieved. Verify gps data before resending")
+            else:
+                seq,ack,cmd,length,data = self.rfm95.extractHeaders(recv)
+                # Expected to recieve an ACK with ack# = prev seq#+1, cmd=0, length=0, and data=cmd
+                print(f"Recieved Headers: {seq} {ack} {cmd} {length}")
+                print(f"Recieved Ack: {data}")
+                print(f"\tSignal Strength: {self.rfm95.last_rssi}")
+                print(f"\tSNR: {self.rfm95.last_snr}")
         else:
             print("Ok, returning")
             return
