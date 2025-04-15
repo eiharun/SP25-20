@@ -25,7 +25,7 @@ class TUI:
     def look_for_idle(self):
         while not self.exit_event.is_set():
             if self.priority_event.is_set():
-                time.sleep(0.1)
+                time.sleep(0.5)
                 continue
             if not self.rfm_lock.acquire(timeout=0.1):
                 continue
@@ -48,7 +48,7 @@ class TUI:
                     # print(f"Idle: {idle}\nRFM95> ", end='', flush=True)#TODO Make output cleaner
             finally:
                 self.rfm_lock.release()
-            # time.sleep(0.1)
+            time.sleep(0.5)
 
     def run(self):
         try:
@@ -132,7 +132,7 @@ class TUICommand(cmd.Cmd):
         finally:
             self._priority_event.clear()
         
-    def do_cutdown(self):
+    def do_cutdown(self, arg):
         """"Cutdown the balloon"""
         answer = input("Are you sure you want to cutdown the balloon? y/n:")
         if answer.lower() == 'y':

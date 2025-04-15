@@ -152,6 +152,8 @@ class RFM95(RFM9x):
             self._len = length
         if len(data) > 0:              
             payload = payload + data
+        else:
+            logger.debug("No data to send, sending header solo")
         # Write payload.
         self._write_from(_RH_RF95_REG_00_FIFO, payload)
         # Write payload and header length.
