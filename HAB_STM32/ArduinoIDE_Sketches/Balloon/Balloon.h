@@ -52,5 +52,5 @@ bool writeLog(uint8_t* data);
 #endif
 void interpret_command(uint8_t* recv_buf);
 void execute_command_0(uint8_t cmd);
-void execute_command_1(uint8_t cmd, uint8_t num);
+void execute_command_1(uint8_t cmd, uint64_t num);
 

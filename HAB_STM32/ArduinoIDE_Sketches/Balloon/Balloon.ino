@@ -329,10 +329,27 @@ void interpret_command(uint8_t* recv_buf){
     execute_command_0(cmd);
   }
   else if (cmd>11 && cmd<=193){
-    Serial.print("BCD Encoded data: ");
-    int decimal=0;
+    uint8_t offset=0;
+    if (length > 8){
+      Serial.print("Truncating");
+      Serial.println(length);
+      offset = length-8;
+      length = 8; //Cap length to 8
+      /* Only read lower 8 bytes */
+    }
+    Serial.println("BCD Encoded data: ");
+    uint64_t decimal=0;
     /* Decodes big endian decimal */
-    for (size_t i = 0; i< length;i++){
+    Serial.print("Length, recv_buf: ");
+    Serial.print(length);
+    Serial.print(" ");
+    Serial.print(recv_buf[0]);
+    Serial.print(" ");
+    Serial.print(recv_buf[1]);
+    Serial.print(" ");
+    Serial.print(recv_buf[2]);
+    Serial.print(" ");
+    for (size_t i = offset; i < length;i++){
       decimal = (decimal<<8) | recv_buf[i];
     }
     //Execute
@@ -363,7 +380,7 @@ void execute_command_0(uint8_t cmd){
   }
 }
 
-void execute_command_1(uint8_t cmd, uint8_t num){
+void execute_command_1(uint8_t cmd, uint64_t num){
   switch(cmd){
     case OPENs: {
       Serial.print("Open (s): ");
