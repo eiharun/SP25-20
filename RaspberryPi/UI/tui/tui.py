@@ -75,15 +75,15 @@ class TUICommand(cmd.Cmd):
         assert unit == 's' or unit == 'm'
         if not self.verify_send_on_idle():
             return
-<<<<<<< HEAD
         if self.send_on_idle:
             print("Waiting for IDLE (balloon to be in range)")
-            # idle = self.rfm95.receive(timeout=5)
+            idle = None
+            while idle == None:
+                idle = self.rfm95.receive(timeout=5)
+            print(f"Recieved IDLE: {self.rfm95.extractHeaders(idle)}")
+            print(f"IDLE: {idle}")
             
-=======
-        print("Waiting for IDLE (balloon to be in range)")
-        self.rfm95.receive(timeout=5)
->>>>>>> 589e146e487a2f24d9242607c6820970c8155f64
+            
         print(f"Opening vent for {duration} {'seconds' if unit == 's' else 'minutes'}")
         cmd = 0
         if unit == 's':

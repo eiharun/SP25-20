@@ -1,15 +1,7 @@
-<<<<<<< HEAD
 #define LOGGING //COMMENT TO DISABLE LOGGING AND DEPENDENCIES (if you don't have GPS or SD card connected)
-=======
-//<<<<<<< HEAD
-//#define LOGGING //COMMENT TO DISABLE LOGGING AND DEPENDENCIES (if you don't have GPS or SD card connected)
-//=======
-#define LOGGING //COMMENT TO DISABLE LOGGING AND DEPENDENCIES (if you don't have GPS or SD card connected)
-//>>>>>>> ce5c8f1d3948342ad1f6c0ffc5b885a933224425
->>>>>>> 5e5a3cfce85df01eca02a0c8a2036f95a90d24e2
 
 #include <SPI.h>
-#include <RH_RF95.h>
+#include <RH_RF95_CH.h>
 #include <Servo.h>
 #include <Arduino.h>
 #include <Wire.h>
@@ -46,7 +38,7 @@ enum state_t { IDLE,
 state_t current_state;
 
 // Singleton instance of the radio driver
-RH_RF95 rf95(RFM95_CS, RFM95_INT);
+RH_RF95_CH rf95(RFM95_CS, RFM95_INT);
 
 #ifdef LOGGING
 HardwareSerial Serial1(GPS_RX, GPS_TX);
@@ -162,8 +154,8 @@ void setup() {
   pinMode(RFM95_INT, INPUT); // needed for interrupt detection
   
 
-  setupTimer2_1Hz();
-  pauseTimer2();
+  // setupTimer2_1Hz();
+  // pauseTimer2();
 
   current_state = IDLE;
 }
@@ -194,7 +186,7 @@ void TIM2_IRQHandler(void) {
 
 /* -----------LOOP---------- */
 /* ------------------------- */
-
+int seq=0;
 void loop() {
   unsigned long currentMillis = millis();
 #ifdef LOGGING
@@ -219,19 +211,19 @@ void loop() {
       /* Send IDLE packet, change state to AWAIT */
       Serial.println("IDLE STATE");
       // strcpy(radiopacket, "IDLE");
-      radiopacket[0] = 0x1;
-      radiopacket[4] = 0;
-      rf95.send((uint8_t*)radiopacket, sizeof(radiopacket));
-      Serial.println("Sleep mode");
-      // start timer to break sleep, only timer breaks sleep mode
-      Serial.println("entering sleep mode\n");
-      enterSleepMode();
-      pauseTimer2();
-<<<<<<< HEAD
-      packetReceived = false;
-      Serial.println("Exiting sleep mode\n");
-=======
->>>>>>> 5e5a3cfce85df01eca02a0c8a2036f95a90d24e2
+      // radiopacket[0] = 0x1;
+      // radiopacket[4] = 0;
+      rf95.setHeaders(seq,0,1,0);
+      seq=(seq+1)%255;
+      rf95.send(NULL, 0);
+      // rf95.send((uint8_t*)radiopacket, sizeof(radiopacket));
+      // Serial.println("Sleep mode");
+      // // start timer to break sleep, only timer breaks sleep mode
+      // Serial.println("entering sleep mode\n");
+      // enterSleepMode();
+      // pauseTimer2();
+      // packetReceived = false;
+      // Serial.println("Exiting sleep mode\n");
 
 #ifdef LOGGING
       writeLog("IDLE", (uint8_t*)"Idle Sent");
