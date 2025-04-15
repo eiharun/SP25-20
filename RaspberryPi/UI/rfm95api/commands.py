@@ -16,7 +16,7 @@ class Commands(Enum):
 # Structure of the commands Enum:
 #0: Reserved DEFAULT
 #1-63: Reserved for commands with no data payload (len=0)
-#64-191: Reserved for commands with Binary Coded Decimal (BCD) data payloads
+#64-191: Reserved for commands with binary number data payloads (with MAX len=8) This is plenty as it can represent 5849424173.55072 centuries duration
 #192-255: Reserved for commands with TBD encoded data payloads
 # Subject to change as more commands are added
 
