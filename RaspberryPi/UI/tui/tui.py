@@ -1,7 +1,11 @@
 from rfm95api import *
 import logging
 import cmd
-from threading import Thread, Lock, Event
+from threading import Thread, Lock, Event, Condition
+import time
+import readline
+import sys
+import functools
 
 logger = logging.getLogger(__name__)
 
@@ -13,31 +17,69 @@ class TUI:
     def __init__(self):
         constructor = RFM95Wrapper()
         self.rfm95 = constructor.construct()
-        self._lock = Lock()
-        self._event = Event()
+        self.rfm_lock = Lock()
+        self.priority_event = Event()
+        self.exit_event = Event()
         self._idleThread = Thread(target=self.look_for_idle)
         logger.debug("RFM95 Constructed")
-        self._lock = Lock()
 
     def look_for_idle(self):
-        while(True):
-            recv = self.rfm95.receive()
-            if recv:
-                logger.info(f"-------{recv}--------")
+        while not self.exit_event.is_set():
+            if self.priority_event.is_set():
+                time.sleep(0.1)
+                continue
+            if not self.rfm_lock.acquire(timeout=0.1):
+                continue
+            try:
+                if self.priority_event.is_set():
+                    continue
+                idle = self.rfm95.receive(timeout=3)
+                if idle:
+                    saved_line = readline.get_line_buffer()
+                    # saved_pos = readline.get_point() 
+                    sys.stdout.write("\r")  # Go to line start
+                    sys.stdout.write("\033[K")  # Clear the line
+                    print(f'Idle Recieved! Balloon in Range\t\a#{idle[0]}')
+                    sys.stdout.write(f"\nRFM95> {saved_line}")
+                    sys.stdout.flush()
+                    readline.redisplay()
+                    # with open("idle.log", 'a') as f:
+                    #     print("\a")
+                    #     f.write(f"[{time.strftime('%H:%M:%S')}] Ping received: {idle}\n")
+                    # print(f"Idle: {idle}\nRFM95> ", end='', flush=True)#TODO Make output cleaner
+            finally:
+                self.rfm_lock.release()
+            # time.sleep(0.1)
 
     def run(self):
         try:
+            f = open("idle.log", 'w')
+            f.close()
             logger.debug("Starting TUI")
             print("Starting TUI")
-            tui_command = TUICommand(self.rfm95)
-            # self._idleThread.start()
+            tui_command = TUICommand(self.rfm95, self.rfm_lock, self.priority_event)
+            self._idleThread.start()
             tui_command.cmdloop()
         except KeyboardInterrupt:
             print()
-            # self._idleThread.join()
+            self.exit_event.set()
+            self._idleThread.join()
             logger.debug("Exiting Ground Station TUI")
             print("Exiting Ground Station TUI")
             exit(0)
+           
+def get_priority(func):
+    @functools.wraps(func)
+    def wrapper(self, *args, **kwargs):
+        self._priority_event.set()
+        logger.debug(f"Priority Event Set")
+        try:    
+            result = func(*args, **kwargs)
+        finally:
+            self._priority_event.clear()
+            logger.debug(f"Priority Event Cleared")
+        return result
+    return wrapper
             
 class TUICommand(cmd.Cmd):
     """
@@ -45,9 +87,12 @@ class TUICommand(cmd.Cmd):
     """
     prompt = "RFM95> "
     
-    def __init__(self, rfm95):
+    def __init__(self, rfm95, radio_lock, priority_event):
         super().__init__()
         self.rfm95 = rfm95
+        self._rfm_lock = radio_lock
+        self._priority_event = priority_event
+        
         self.intro = "Welcome to the RFM95 CLI. Type help or ? to list commands.\n"
         self.intro += "Type 'exit' to exit the CLI.\n"
         self.intro += "Type 'help <command>' for help on a specific command.\n"
@@ -59,6 +104,7 @@ class TUICommand(cmd.Cmd):
         
         
     #----------------COMMANDS SET-------------------------#
+    @get_priority
     def do_open(self, arg):
         """Open the vent for 'x' (sec/min)
     Usage: OPEN x [s/m]
@@ -71,19 +117,9 @@ class TUICommand(cmd.Cmd):
     """
         assert len(arg.split(' ')) == 2
         duration = int(arg.split(' ')[0])
+        assert duration < 2**(8*8) #Max len is 8
         unit = arg.split(' ')[1].lower()
         assert unit == 's' or unit == 'm'
-        if not self.verify_send_on_idle():
-            return
-        if self.send_on_idle:
-            print("Waiting for IDLE (balloon to be in range)")
-            idle = None
-            while idle == None:
-                idle = self.rfm95.receive(timeout=5)
-            print(f"Recieved IDLE: {self.rfm95.extractHeaders(idle)}")
-            print(f"IDLE: {idle}")
-            
-            
         print(f"Opening vent for {duration} {'seconds' if unit == 's' else 'minutes'}")
         cmd = 0
         if unit == 's':
@@ -94,9 +130,10 @@ class TUICommand(cmd.Cmd):
         num_bytes, payload = self.byte_w_len(duration)
         logger.debug(f"Verification: {duration}:{payload}:{num_bytes}:{int.from_bytes(payload,'big')}")
         #TODO: Wait for idle
-        self.rfm95.send(payload, seq=self.seq, ack=0, CMD=cmd, length=num_bytes)
-        self.seq = (self.seq+1)%256
-        recv = self.rfm95.receive(timeout=5)
+        with self._rfm_lock:
+            self.rfm95.send(payload, seq=self.seq, ack=0, CMD=cmd, length=num_bytes)
+            self.seq = (self.seq+1)%256
+            recv = self.rfm95.receive(timeout=5)
         if recv is None:
             print("No Ack recieved. Verify gps data before resending")
         else:
@@ -106,14 +143,16 @@ class TUICommand(cmd.Cmd):
             print(f"Recieved Ack: {data}")
             print(f"\tSignal Strength: {self.rfm95.last_rssi}")
             print(f"\tSNR: {self.rfm95.last_snr}")
-        
-    def do_cutdown(self):
+
+    @get_priority
+    def do_cutdown(self, arg):
         """"Cutdown the balloon"""
         answer = input("Are you sure you want to cutdown the balloon? y/n:")
         if answer.lower() == 'y':
-            self.rfm95.send(b'', seq=self.seq, ack=0, CMD=Commands.CUTDOWN.value, length=0)
-            self.seq = (self.seq+1)%256
-            recv = self.rfm95.receive(timeout=5)
+            with self._rfm_lock:
+                self.rfm95.send(b'', seq=self.seq, ack=0, CMD=Commands.CUTDOWN.value, length=0)
+                self.seq = (self.seq+1)%256
+                recv = self.rfm95.receive(timeout=5)
             if recv is None:
                 print("No Ack recieved. Verify gps data before resending")
             else:
@@ -183,11 +222,12 @@ class TUICommand(cmd.Cmd):
     # def byte_length(self,i):
         # return (i.bit_length() + 7) // 8
 
-    def byte_w_len(self, i:str):
+    def byte_w_len(self, i:int):
         """
         Returns the number of bytes and the byte array of the given String.
         """
-        assert isinstance(i, str), "Argument in byte_w_len() must be a string"
+        assert isinstance(i, int), "Argument in byte_w_len() must be a string"
         num_bytes = (i.bit_length() + 7) // 8
         return num_bytes, i.to_bytes(num_bytes, byteorder='big')
-        
+                
+   

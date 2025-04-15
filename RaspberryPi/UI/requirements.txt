@@ -1,1 +1,3 @@
 adafruit-circuitpython-rfm9x
+
+pyreadline3; sys_platform == "win32"
