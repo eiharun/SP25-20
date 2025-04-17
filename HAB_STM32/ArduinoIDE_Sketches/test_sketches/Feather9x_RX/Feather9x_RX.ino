@@ -21,7 +21,7 @@
 #define GPS_TX 5
 #define GPS_RX 4
 
-#define TX_LED      A4
+#define TX_LED      A5
 #define RX_LED      A6
 // Change to 434.0 or other frequency, must match RX's freq!
 #define RF95_FREQ 915.0
