@@ -2,29 +2,6 @@
 
 #include "Balloon.h"
 
-void setupTimer2_1Hz() {
-  // Enable TIM2 clock
-  RCC->AHB1ENR |= RCC_APB1ENR1_TIM2EN;
-  TIM2->CNT = 0;
-  TIM2->PSC = 64000 - 1;   // Prescaler: 64 MHz / 64k = 1 kHz
-  TIM2->ARR = 300000 - 1;    // Auto-reload: 300,000 ms = 5 min
-  TIM2->DIER |= TIM_DIER_UIE;   // Enable update interrupt
-  TIM2->CR1 &= ~TIM_CR1_CEN;     // Disable counter
-
-  NVIC_EnableIRQ(TIM2_IRQn);    // Enable interrupt in NVIC
-}
-
-void pauseTimer2() {
-  TIM2->CR1 &= ~TIM_CR1_CEN;     // Disable counter
-  TIM2->DIER &= ~TIM_DIER_UIE;   // Disable update interrupt
-}
-
-void resetTimer2() {
-  TIM2->CNT = 0;
-  TIM2->DIER |= TIM_DIER_UIE;    // Enable update interrupt
-  TIM2->CR1 |= TIM_CR1_CEN;      // Enable counter
-}
-
 void setup() {
   pinMode(RFM95_RST, OUTPUT);
   pinMode(TX_LED, OUTPUT);
@@ -43,6 +20,8 @@ void setup() {
   Serial.begin(115200);
   while (!Serial) delay(1);
   delay(100);
+
+  
 
   /* Start GPS Software Serial */ /* STM32 Use Serial1 port */
 #ifdef LOGGING
@@ -110,32 +89,16 @@ void setup() {
   // setupTimer2_1Hz();
   // pauseTimer2();
 
-  current_state = IDLE;
+  current_state = AWAIT; 
 }
 
 uint8_t recv_buf[RH_RF95_MAX_MESSAGE_LEN];
-uint8_t recv_buf_len = sizeof(recv_buf);
+uint8_t recv_buf_len = RH_RF95_MAX_MESSAGE_LEN;
 
 const int interval = 5 * 60 * 1000; // 5 minutes between idle packets, can change
 unsigned long lastWakeTime = 0;
 unsigned long lastReceivedTime = 0;
 
-// from STM32 forum
-void enterSleepMode(){
-  resetTimer2();
-  HAL_SuspendTick();
-  HAL_PWR_EnterSLEEPMode(PWR_MAINREGULATOR_ON, PWR_SLEEPENTRY_WFI);
-}
-
-void TIM2_IRQHandler(void) {
-  if (TIM2->SR & TIM_SR_UIF) {         // Check update interrupt flag
-    TIM2->SR &= ~TIM_SR_UIF;           // Clear the flag 
-    TIM2->CNT = 0;
-
-    HAL_ResumeTick();
-    Serial.println("timer 2 expired\n");
-  }
-}
 
 /* ---------------------LOOP-------------------- */
 /* --------------------------------------------- */
@@ -175,9 +138,9 @@ void loop() {
       // pauseTimer2();
       // packetReceived = false;
       // Serial.println("Exiting sleep mode\n");
-#ifdef LOGGING
-      writeLog("IDLE", (uint8_t*)"Idle Sent");
-#endif
+// #ifdef LOGGING
+//       writeLog("IDLE", (uint8_t*)"Idle Sent");
+// #endif
       current_state = AWAIT;
       break;
     }
@@ -186,43 +149,26 @@ void loop() {
        * If no reply, change state to IDLE, sleep for 'y' seconds/minutes
        * If reply, change state to RECV
        */
-
-      // unsigned long startTime = millis();
-      // bool received = false;
-
-      // while (millis() - startTime >= AWAIT_TIMEOUT) {
-      //   if (rf95.available()){
-      //     received = true;
-      //     break;
-      //   }
-      // }
-      
-      // if (received){
-      //   current_state = RECV;
-      //   break;
-      // }
-
-      // else{
-      //   current_state = IDLE;
-      //   break;
-      // }
-
       Serial.println("AWAIT STATE");
       if (rf95.waitAvailableTimeout(AWAIT_TIMEOUT)) {
-        memset(recv_buf, 0, recv_buf_len);
         if (rf95.recv(recv_buf, &recv_buf_len)) {
+          Serial.print("Got0:");
+          for (size_t i=0; i<rf95.headerLen(); i++){
+            Serial.print(" ");
+            Serial.print(recv_buf[i]);
+          }
           current_state = RECV;
         } else {
           /* Failed to recv (err) */
         }
       } else {
-        current_state = IDLE;
+        // current_state = IDLE;
         /* GO TO SLEEP */ /* TODO:
                            * In sleep mode set up interrupt when any packet is recieved
                            * to wake up and change state to RECV
                            */
-        Serial.println("SLEEP");
-        delay(1000);  //artificially sleep
+        // Serial.println("SLEEP");
+        // delay(1000);  //artificially sleep
       }
       break;
     }
@@ -235,24 +181,33 @@ void loop() {
       /* Do something with recv_buf */
       uint8_t ack = rf95.headerSeq() + 1;
       uint8_t cmd = rf95.headerCMD();
-
+      uint8_t len = rf95.headerLen();
+      Serial.print("Got Seq:");
+      Serial.println(ack-1);
+      Serial.print("Got cmd:");
+      Serial.println(cmd);
       digitalWrite(RX_LED, HIGH);
-      Serial.print("Got: ");
-      Serial.println((char*)recv_buf);
+      Serial.print("Got1:");
+      for (size_t i=0; i<len; i++){
+        Serial.print(" ");
+        Serial.print(recv_buf[i]);
+      }
+      Serial.println();
       delay(400);
       digitalWrite(RX_LED, LOW);
+      recv_t recv_pkt = {rf95.headerSeq(), rf95.headerAck(), rf95.headerCMD(), rf95.headerLen(), recv_buf, rf95.lastRssi(), rf95.lastSNR()};
 #ifdef LOGGING
       /* LOG-TYPE,Time,GPS-Coords,,,RecievedPacket */
-      writeLog("RECV", recv_buf);
+      writeLog("RECV", recv_pkt);
 #endif
 
-      interpret_command(recv_buf);
       /* Send ACK */
       rf95.setHeaders(seq, ack, cmd, 0);
       rf95.send(NULL, 0);
       seq=(seq+1)%256;
-      // memset(recv_buf, 0, recv_buf_len); /* Clear buffer */
-      current_state = AWAKE;
+      Serial.println("Sent ack");
+      interpret_command(recv_buf);
+      current_state = AWAIT;
       lastReceivedTime=millis();
       break;
     }
@@ -266,7 +221,6 @@ void loop() {
 
       if (rf95.available()) {
         lastReceivedTime = millis();
-        memset(recv_buf, 0, recv_buf_len);
         if (rf95.recv(recv_buf, &recv_buf_len)) {
           current_state = RECV;
         } else {
@@ -276,7 +230,8 @@ void loop() {
 
       else if (millis() - lastReceivedTime > INACTIVITY_TIMEOUT) {
         Serial.println("Awake Timeout");
-        current_state = IDLE;
+        current_state = AWAIT;
+        // current_state = IDLE;
       }
       break;
     default:
@@ -287,7 +242,7 @@ void loop() {
 }
 
 #ifdef LOGGING
-bool writeLog(char* type, uint8_t* data) {
+bool writeLog(char* type, recv_t recv_pkt) {
   float flat, flon, falt, fspeed;
   gps.f_get_position(&flat, &flon);
   falt = gps.f_altitude();
@@ -304,8 +259,9 @@ bool writeLog(char* type, uint8_t* data) {
   // Serial.print(":");
   // Serial.println(second);
   char log_str[256];
-  sprintf(log_str, "%s,%02d/%02d %02d:%02d:%02d.%02d,%11.6f,%11.6f,%7.2f,%6.2f,%s",
-          type, month, day, hour, minute, second, hundredths, flat, flon, falt, fspeed, data);
+  sprintf(log_str, "%s,%hi,%d,%02d/%02d %02d:%02d:%02d.%02d,%11.6f,%11.6f,%7.2f,%6.2f,%d:%d:%d:%d:%s",
+          type, recv_pkt.rssi, recv_pkt.snr, month, day, hour, minute, second, hundredths, flat, flon, falt, fspeed, 
+          recv_pkt.seq, recv_pkt.ack, recv_pkt.cmd, recv_pkt.len, recv_pkt.data);
   Serial.print("Logged: ");
   Serial.println(log_str);
   logFile = SD.open(LOG_FILENAME, FILE_WRITE);
@@ -325,7 +281,6 @@ void interpret_command(uint8_t* recv_buf){
   uint8_t length = rf95.headerLen();
   if (cmd>0 && cmd<=11){
     Serial.print("No payload data: ");
-    Serial.println(recv_buf[0]);
     execute_command_0(cmd);
   }
   else if (cmd>11 && cmd<=193){
@@ -380,11 +335,31 @@ void execute_command_0(uint8_t cmd){
   }
 }
 
+void resetMotor(){
+  motor.write(0);
+  MotorBusy = false;
+  Serial.println("Timer ended");
+}
+
+
 void execute_command_1(uint8_t cmd, uint64_t num){
   switch(cmd){
     case OPENs: {
       Serial.print("Open (s): ");
       Serial.println(num);
+      motor.write(SERVO_ANGLE);      
+      uint32_t prescalar = timFreq;
+      motorTimer->setPrescaleFactor(prescalar);
+      motorTimer->attachInterrupt(resetMotor);
+      uint32_t arr = (uint32_t)num * timerFreq;
+      motorTimer->setOverflow((uint32_t) num);
+      
+      motorTimer->setCount(0);
+      motorTimer->resume();
+      Serial.println("Timer started");
+      MotorBusy = true;
+      // delay(num*1000);  
+      // motor.write(0);
       break;
     }
     case OPENm: {

@@ -36,6 +36,16 @@ enum state_t { IDLE,
                AWAKE };
 state_t current_state;
 
+struct recv_t {
+  uint8_t seq;
+  uint8_t ack;
+  uint8_t cmd;
+  uint8_t len;
+  uint8_t* data;
+  short rssi;
+  int snr;
+};
+
 // Singleton instance of the radio driver
 RH_RF95_CH rf95(RFM95_CS, RFM95_INT);
 
@@ -47,8 +57,13 @@ File logFile;
 
 Servo motor;
 
+HardwareTimer* motorTimer = new HardwareTimer(TIM2);  
+uint32_t timFreq = motorTimer->getTimerClkFreq();
+
+bool MotorBusy;
+
 #ifdef LOGGING
-bool writeLog(uint8_t* data);
+bool writeLog(char* type, recv_t recv_pkt);
 #endif
 void interpret_command(uint8_t* recv_buf);
 void execute_command_0(uint8_t cmd);
