@@ -77,7 +77,7 @@ class TUICommand(cmd.Cmd):
         if unit == 's':
             cmd = Commands.OPENs.value
         elif unit == 'm':
-            cmd = Commands.OPENm.value
+            cmd = Commands.OPENm.value  
         assert cmd != 0
         num_bytes, payload = self.byte_w_len(duration)
         logger.debug(f"Verification: {duration}:{payload}:{num_bytes}:{int.from_bytes(payload,'big')}")

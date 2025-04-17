@@ -166,6 +166,7 @@ class Trans:
         payload = b''
         if type(arg) is int:
             num_bytes, payload = self.byte_w_len(arg)
+        print(payload, self.seq, 0, self.cmd, num_bytes)
         self.rfm95.send(payload, seq=self.seq, ack=0, CMD=self.cmd, length=num_bytes)
         self.seq = (self.seq+1)%256
         response = self.rfm95.receive(timeout=5.0)  # Wait up to 5 seconds
