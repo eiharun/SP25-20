@@ -1,4 +1,4 @@
-pyimport argparse
+import argparse
 import logging
 from tui import TUI
 from gui import GUI
