@@ -171,17 +171,12 @@ class Trans:
         response = self.rfm95.receive(timeout=5.0)  # Wait up to 5 seconds
         if response:
             seq, ack, cmd, length, data = self.rfm95.extractHeaders(response)
-            if ack == 1:  # or whatever you use for ACK flag
-                self.result_label.config(text= f"ACK received: {ack}", fg='green')
-                self.log(f"ACK received, Data: {data}", tag="info")
-                self.log(f"Recieved Headers: {seq} {ack} {cmd} {length}")
-                self.log(f"Recieved Ack: {data}")
-                self.log(f"\tSignal Strength: {self.rfm95.last_rssi}")
-                self.log(f"\tSNR: {self.rfm95.last_snr}")
+ 
+            self.result_label.config(text= f"ACK received", fg='green')
+            self.log(f"Recieved Headers: {seq} {ack} {cmd} {length}")
+            self.log(f"\tSignal Strength: {self.rfm95.last_rssi}")
+            self.log(f"\tSNR: {self.rfm95.last_snr}")
 
-            else:
-                self.result_label.config(text= f"Received response, not ACK: {response}",fg='orange')
-                self.log(f"Response received (no ACK): {response}", tag="warning")
         else:
             self.result_label.config(text= f"Timeout Waiting", fg='red')
             self.log("Timeout waiting for ACK", tag="error")
