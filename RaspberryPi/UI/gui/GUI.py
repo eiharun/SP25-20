@@ -174,6 +174,7 @@ class Trans:
  
             self.result_label.config(text= f"ACK received", fg='green')
             self.log(f"Recieved Headers: {seq} {ack} {cmd} {length}")
+            self.log(f"Data: {data}")
             self.log(f"\tSignal Strength: {self.rfm95.last_rssi}")
             self.log(f"\tSNR: {self.rfm95.last_snr}")
 
