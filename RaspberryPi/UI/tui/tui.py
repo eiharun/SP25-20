@@ -89,6 +89,8 @@ class TUICommand(cmd.Cmd):
             print("No Ack recieved. Verify gps data before resending")
         else:
             seq,ack,cmd,length,data = self.rfm95.extractHeaders(recv)
+            if cmd == 255:
+                print("Balloon is busy. Motor is open. Send close command to close it")
             # Expected to recieve an ACK with ack# = prev seq#+1, cmd=0, length=0, and data=cmd
             print(f"Recieved Headers: {seq} {ack} {cmd} {length}")
             print(f"Recieved Ack: {data}")
@@ -124,6 +126,8 @@ class TUICommand(cmd.Cmd):
             print("No Ack recieved. Verify gps data before resending")
         else:
             seq,ack,cmd,length,data = self.rfm95.extractHeaders(recv)
+            if cmd == 255:
+                print("Balloon is busy. Motor is open. Send close command to close it")
             # Expected to recieve an ACK with ack# = prev seq#+1, cmd=0, length=0, and data=cmd
             print(f"Recieved Headers: {seq} {ack} {cmd} {length}")
             print(f"Recieved Ack: {data}")
