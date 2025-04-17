@@ -29,10 +29,12 @@ class Trans:
         self.root = root
         self.rfm95 = RFM95Wrapper().construct()
         logger.debug("RFM95 Constructed")
+        self.cmd = Commands.DEFAULT.value
+        self.seq = 0
 
-        # cutoff, idle, and entry
-        self.cutoff_button = tk.Button(root, text="Cutoff", width=10, height=2, bg='red', font=("Arial", 12), command=self.check_cutoff)
-        self.cutoff_button.grid(row=6, column=0, columnspan=1, padx=5, pady=5)
+        # cutdown, idle, and entry
+        self.cutdown_button = tk.Button(root, text="Cutdown", width=10, height=2, bg='red', font=("Arial", 12), command=self.check_cutdown)
+        self.cutdown_button.grid(row=6, column=0, columnspan=1, padx=5, pady=5)
 
         self.idle_button = tk.Button(root, text="Idle", width=10, height=2, font=("Arial", 12), command=self.check_idle)
         self.idle_button.grid(row=6, column=2, columnspan=1, padx=5, pady=5)
@@ -100,35 +102,42 @@ class Trans:
             self.result_label.config(text="Please enter a valid number", fg="red")
             self.log("Invalid entry: not a number", tag="error")
             return
+        self.entry.delete(0, tk.END)
+        # ask for time unit
         self.lockoutstart()
         time_unit = self.ask_time_unit()
         if time_unit == "seconds":
-            commands = 'OPENs'
+            #commands = 'OPENs'
+            self.cmd = Commands.OPENs.value
         else:
-            commands = 'OPENm'
+            #commands = 'OPENm'
+            self.cmd = Commands.OPENm.value
+        # confirmation
         if messagebox.askokcancel("Open Confirmation", f"Are you sure you want to open for {time_val} {time_unit}?"):
             self.result_label.config(text= f"Opening for {time_val} {time_unit}", fg="black")
             self.log(f"Opening for {time_val} {time_unit}",tag='info')
-            self.printout(commands)
+            #self.printout(commands)
+            self.printout(int(time_val))
         else:
             self.result_label.config(text="Canceling command", fg="orange")
             self.log("User canceled OPEN command", tag="warning")
             
         # re-enable
         self.lockoutend()
-        self.entry.delete(0, tk.END)
         
 
-    # cutoff, confirmation
-    def check_cutoff(self):
+    # cutdown, confirmation
+    def check_cutdown(self):
         self.lockoutstart()
-        if messagebox.askokcancel("Cutoff Confirmation", "Are you sure you want to cutoff?"):
-            self.log("Sending CUTOFF command",tag='info')
-            self.printout('CUTOFF')
+        self.cmd = Commands.CUTDOWN.value
+        if messagebox.askokcancel("Cutdown Confirmation", "Are you sure you want to cutdown?"):
+            self.log("Sending CUTDOWN command",tag='info')
+            #self.printout('CUTDOWN')
+            self.printout(b'')
             
         else:
-            self.log("User canceled CUTOFF command", tag="warning")
-            self.result_label.config(text= f'Cancel sending cutoff',fg='orange')
+            self.log("User canceled CUTDOWN command", tag="warning")
+            self.result_label.config(text= f'Cancel sending cutdown',fg='orange')
 
         # re-enable 1.5 seconds
         self.lockoutend()
@@ -136,37 +145,55 @@ class Trans:
     # idle, no comfirmation text box
     def check_idle(self):
         self.lockoutstart()
+        self.cmd = Commands.IDLE.value
         if messagebox.askokcancel("Idle Confirmation", "Are you sure you want to send idle?"):
             self.log("Sending IDLE command",tag="info")
-            self.printout('IDLE')
+            #self.printout('IDLE')
+            self.printout(b'')
         else:
             self.result_label.config(text= f'Cancel sending idle',fg='orange')
             self.log("Canceling IDLE command",tag="warning")
         self.lockoutend()
         
-    # sending and receving, send 3 time if no ACK
-    def printout(self, message):
-        self.result_label.config(text= f'Sending {message}, Waiting for ACK', fg='black')
-        for i in range(3):
-            # encode, send, and wait for ACK
-            encode_message = message.encode('utf-8')
-            self.log(f"Sending: {message}, Attempt {i+1}/3",tag='info')
-            self.rfm95.send(encode_message)
-            response = self.rfm95.receive(timeout=5.0)  # Wait up to 5 seconds
-            if response:
-                seq, ack, cmd, length, data = self.rfm95.extractHeaders(response)
-                if ack == 1:  # or whatever you use for ACK flag
-                    self.result_label.config(text= f"ACK received: {response}", fg='green')
-                    self.log(f"ACK received: {response}", tag="info")
-                else:
-                    self.result_label.config(text= f"Received response, not ACK: {response}",fg='orange')
-                    self.log(f"Response received (no ACK): {response}", tag="warning")
-                break
-            else:
-                self.result_label.config(text= f"Timeout Waiting", fg='red')
-                self.log("Timeout waiting for ACK", tag="error")
-                time.sleep(2) # wait 2 second before sending again
+    # sending and receving
+    #def printout(self, message):
+    def printout(self, arg):
+        
+        # no need to encode, send the cmd and ack,
+        #encode_message = message.encode('utf-8')
+        assert self.cmd != Commands.DEFAULT.value
+        num_bytes = 0
+        payload = b''
+        if type(arg) is int:
+            num_bytes, payload = self.byte_w_len(arg)
+        self.rfm95.send(payload, seq=self.seq, ack=0, CMD=self.cmd, length=num_bytes)
+        self.seq = (self.seq+1)%256
+        response = self.rfm95.receive(timeout=5.0)  # Wait up to 5 seconds
+        if response:
+            seq, ack, cmd, length, data = self.rfm95.extractHeaders(response)
+            if ack == 1:  # or whatever you use for ACK flag
+                self.result_label.config(text= f"ACK received: {ack}", fg='green')
+                self.log(f"ACK received, Data: {data}", tag="info")
+                self.log(f"Recieved Headers: {seq} {ack} {cmd} {length}")
+                self.log(f"Recieved Ack: {data}")
+                self.log(f"\tSignal Strength: {self.rfm95.last_rssi}")
+                self.log(f"\tSNR: {self.rfm95.last_snr}")
 
+            else:
+                self.result_label.config(text= f"Received response, not ACK: {response}",fg='orange')
+                self.log(f"Response received (no ACK): {response}", tag="warning")
+        else:
+            self.result_label.config(text= f"Timeout Waiting", fg='red')
+            self.log("Timeout waiting for ACK", tag="error")
+
+    def byte_w_len(self, i:int):
+        """
+        Returns the number of bytes and the byte array of the given String.
+        """
+        assert isinstance(i, int), "Argument in byte_w_len() must be a string"
+        num_bytes = (i.bit_length() + 7) // 8
+        return num_bytes, i.to_bytes(num_bytes, byteorder='big')
+    
     def ask_time_unit(self):
         selected_unit = tk.StringVar()
 
@@ -193,16 +220,16 @@ class Trans:
         popup.wait_window()  # Wait until popup is closed
         return selected_unit.get()
 
-    #disable every button after send/idle/cutoff
+    #disable every button after send/idle/cutdown
     def lockoutstart(self):
         self.idle_button.config(state='disabled')
         self.entry.config(state='disabled')
-        self.cutoff_button.config(state='disabled')
+        self.cutdown_button.config(state='disabled')
         
     def lockoutend(self):
-        self.root.after(1500, lambda: self.idle_button.config(state='normal'))
-        self.root.after(1500, lambda: self.entry.config(state='normal'))
-        self.root.after(1500, lambda: self.cutoff_button.config(state='normal'))
+        self.root.after(1000, lambda: self.idle_button.config(state='normal'))
+        self.root.after(1000, lambda: self.entry.config(state='normal'))
+        self.root.after(1000, lambda: self.cutdown_button.config(state='normal'))
 
     def setup_log_tags(self):
         self.log_box.tag_config('info', foreground='black')

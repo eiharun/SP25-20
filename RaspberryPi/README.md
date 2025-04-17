@@ -88,3 +88,5 @@ optional arguments:
 | MOSI      | GPIO 10 (MOSI)   |
 | CS        | GPIO 20          |
 | RST       | GPIO 19          |
+
+![Raspberry Pi 2 Model B pinout](RaspberryPi2Pinout.PNG)

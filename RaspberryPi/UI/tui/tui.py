@@ -23,6 +23,7 @@ class TUI:
         self._idleThread = Thread(target=self.look_for_idle)
         logger.debug("RFM95 Constructed")
 
+    #remove ?
     def look_for_idle(self):
         while not self.exit_event.is_set():
             if self.priority_event.is_set():
