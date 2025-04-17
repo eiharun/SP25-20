@@ -82,6 +82,7 @@ class TUICommand(cmd.Cmd):
         num_bytes, payload = self.byte_w_len(duration)
         logger.debug(f"Verification: {duration}:{payload}:{num_bytes}:{int.from_bytes(payload,'big')}")
         self.rfm95.send(payload, seq=self.seq, ack=0, CMD=cmd, length=num_bytes)
+        print(f"Sent Headers: {seq} {ack} {cmd} {num_bytes}")
         self.seq = (self.seq+1)%256
         recv = self.rfm95.receive(timeout=5)
         if recv is None:
