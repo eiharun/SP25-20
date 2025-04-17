@@ -11,13 +11,13 @@ logger = logging.getLogger(__name__)
 
 class GUI:
     def __init__(self):
-        root = tk.Tk()
-        trans = Trans(root)
-        root.title("Balloon Control Interface")
+        self.root = tk.Tk()
+        trans = Trans(self.root)
+        self.root.title("Balloon Control Interface")
         
     def run(self):
         try:
-            root.mainloop()
+            self.root.mainloop()
         except KeyboardInterrupt:
             print()
             logger.debug("Exiting Ground Station GUI")
