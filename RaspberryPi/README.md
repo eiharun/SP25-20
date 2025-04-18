@@ -90,3 +90,5 @@ optional arguments:
 | RST       | GPIO 19          |
 
 ![Raspberry Pi 2 Model B pinout](RaspberryPi2Pinout.PNG)
+
+The Cutdown function doesn't do anything currently since we only had access to the motor. Reimplement with your way of cutting down the balloon.
