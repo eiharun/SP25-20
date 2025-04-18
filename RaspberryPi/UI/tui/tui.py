@@ -1,11 +1,6 @@
 from rfm95api import *
 import logging
 import cmd
-from threading import Thread, Lock, Event, Condition
-import time
-import readline
-import sys
-import functools
 
 logger = logging.getLogger(__name__)
 
@@ -18,8 +13,6 @@ class TUI:
         constructor = RFM95Wrapper()
         self.rfm95 = constructor.construct()
         logger.debug("RFM95 Constructed")
-
-    
 
     def run(self):
         try:
@@ -54,7 +47,7 @@ class TUICommand(cmd.Cmd):
         self.send_on_idle = True
         self._idle_status = False
         self.seq = 0
-        
+        self.cmd = Commands.DEFAULT.value
         
     #----------------COMMANDS SET-------------------------#
     def do_open(self, arg):
@@ -69,48 +62,48 @@ class TUICommand(cmd.Cmd):
     """
         assert len(arg.split(' ')) == 2
         duration = int(arg.split(' ')[0])
-        assert duration < 2**(8*8) #Max len is 8
         unit = arg.split(' ')[1].lower()
+        assert duration < 2**(8*8) #Max len is 8
         assert unit == 's' or unit == 'm'
-        print(f"Opening vent for {duration} {'seconds' if unit == 's' else 'minutes'}")
-        cmd = 0
-        if unit == 's':
-            cmd = Commands.OPENs.value
-        elif unit == 'm':
-            cmd = Commands.OPENm.value  
-        assert cmd != 0
+        self.cmd = Commands.OPENs.value if unit == 's' else Commands.OPENm.value
+        assert self.cmd != Commands.DEFAULT.value
         num_bytes, payload = self.byte_w_len(duration)
+        self.rfm95.send(payload, seq=self.seq, ack=0, CMD=self.cmd, length=num_bytes)
+
         logger.debug(f"Verification: {duration}:{payload}:{num_bytes}:{int.from_bytes(payload,'big')}")
-        self.rfm95.send(payload, seq=self.seq, ack=0, CMD=cmd, length=num_bytes)
-        print(f"Sent Headers: {self.seq} {cmd} {num_bytes}")
+        print(f"Opening vent for {duration} {'seconds' if unit == 's' else 'minutes'}")
+        print(f"Sent Headers: {self.seq} {self.cmd} {num_bytes}")
+
         self.seq = (self.seq+1)%256
         recv = self.rfm95.receive(timeout=5)
+
         if recv is None:
             print("No Ack recieved. Verify gps data before resending")
         else:
             seq,ack,cmd,length,data = self.rfm95.extractHeaders(recv)
             if cmd == 255:
                 print("Balloon is busy. Motor is open. Send close command to close it")
-            # Expected to recieve an ACK with ack# = prev seq#+1, cmd=0, length=0, and data=cmd
-            print(f"Recieved Headers: {seq} {ack} {cmd} {length}")
-            print(f"Recieved Ack: {data}")
+            print(f"Recieved Headers: {seq} {ack} {cmd} {length} {data}")
             print(f"\tSignal Strength: {self.rfm95.last_rssi}")
             print(f"\tSNR: {self.rfm95.last_snr}")
 
     def do_cutdown(self, arg):
         """"Cutdown the balloon"""
+
         answer = input("Are you sure you want to cutdown the balloon? y/n:")
         if answer.lower() == 'y':
+            print("Sending cutdown command")
             self.rfm95.send(b'', seq=self.seq, ack=0, CMD=Commands.CUTDOWN.value, length=0)
             self.seq = (self.seq+1)%256
             recv = self.rfm95.receive(timeout=5)
+
             if recv is None:
                 print("No Ack recieved. Verify gps data before resending")
             else:
                 seq,ack,cmd,length,data = self.rfm95.extractHeaders(recv)
-                # Expected to recieve an ACK with ack# = prev seq#+1, cmd=0, length=0, and data=cmd
-                print(f"Recieved Headers: {seq} {ack} {cmd} {length}")
-                print(f"Recieved Ack: {data}")
+                if cmd == 255:
+                    print("Motor is open. Now Opening indefinitely")
+                print(f"Recieved Headers: {seq} {ack} {cmd} {length} {data}")
                 print(f"\tSignal Strength: {self.rfm95.last_rssi}")
                 print(f"\tSNR: {self.rfm95.last_snr}")
         else:
@@ -118,7 +111,10 @@ class TUICommand(cmd.Cmd):
             return
         
     def do_idle(self, arg):
-        print("Sending IDLE command")
+        """Sends an IDLE command to the balloon 
+        Usage: IDLE"""
+
+        print("Sending idle command")
         self.rfm95.send(b'', seq=self.seq, ack=0, CMD=Commands.IDLE.value, length=0)
         self.seq = (self.seq+1)%256
         recv = self.rfm95.receive(timeout=5)
@@ -128,15 +124,32 @@ class TUICommand(cmd.Cmd):
             seq,ack,cmd,length,data = self.rfm95.extractHeaders(recv)
             if cmd == 255:
                 print("Balloon is busy. Motor is open. Send close command to close it")
-            # Expected to recieve an ACK with ack# = prev seq#+1, cmd=0, length=0, and data=cmd
-            print(f"Recieved Headers: {seq} {ack} {cmd} {length}")
-            print(f"Recieved Ack: {data}")
+            print(f"Recieved Headers: {seq} {ack} {cmd} {length} {data}")
             print(f"\tSignal Strength: {self.rfm95.last_rssi}")
             print(f"\tSNR: {self.rfm95.last_snr}")
     
-        """Sends an IDLE command to the balloon 
-        Usage: IDLE"""
-     
+    def do_close(self, arg):
+        """"Cutdown the balloon"""
+        
+        answer = input("Are you sure you want to close the balloon? y/n:")
+        if answer.lower() == 'y':
+            print("Sending close command")
+            self.rfm95.send(b'', seq=self.seq, ack=0, CMD=Commands.CLOSE.value, length=0)
+            self.seq = (self.seq+1)%256
+            recv = self.rfm95.receive(timeout=5)
+
+            if recv is None:
+                print("No Ack recieved. Verify gps data before resending")
+            else:
+                seq,ack,cmd,length,data = self.rfm95.extractHeaders(recv)
+                if cmd == 255:
+                    print("Motor is open. Closing")
+                print(f"Recieved Headers: {seq} {ack} {cmd} {length} {data}")
+                print(f"\tSignal Strength: {self.rfm95.last_rssi}")
+                print(f"\tSNR: {self.rfm95.last_snr}")
+        else:
+            print("Ok, returning")
+            return
     #----------------MISC---------------------------------#    
         
     def preloop(self):
