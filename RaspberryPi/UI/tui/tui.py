@@ -93,7 +93,7 @@ class TUICommand(cmd.Cmd):
         answer = input("Are you sure you want to cutdown the balloon? y/n:")
         if answer.lower() == 'y':
             print("Sending cutdown command")
-            self.rfm95.send(b'', seq=self.seq, ack=0, CMD=Commands.CUTDOWN.value, length=0)
+            self.rfm95.send(b'\x00', seq=self.seq, ack=0, CMD=Commands.CUTDOWN.value, length=0)
             self.seq = (self.seq+1)%256
             recv = self.rfm95.receive(timeout=5)
 
@@ -129,12 +129,12 @@ class TUICommand(cmd.Cmd):
             print(f"\tSNR: {self.rfm95.last_snr}")
     
     def do_close(self, arg):
-        """"Cutdown the balloon"""
+        """"Closes the balloon vent"""
         
         answer = input("Are you sure you want to close the balloon? y/n:")
         if answer.lower() == 'y':
             print("Sending close command")
-            self.rfm95.send(b'', seq=self.seq, ack=0, CMD=Commands.CLOSE.value, length=0)
+            self.rfm95.send(b'\x00', seq=self.seq, ack=0, CMD=Commands.CLOSE.value, length=0)
             self.seq = (self.seq+1)%256
             recv = self.rfm95.receive(timeout=5)
 
