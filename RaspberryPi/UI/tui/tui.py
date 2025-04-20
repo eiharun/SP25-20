@@ -187,6 +187,9 @@ class TUICommand(cmd.Cmd):
         print("To set the timeout to 10 seconds")
         print("\tset_timeout 10")
         
+    def help_send_custom_packet(self):
+        pass
+        
     #----------------MISC---------------------------------#    
         
     def do_set_timeout(self, arg):
@@ -197,6 +200,9 @@ class TUICommand(cmd.Cmd):
         self.RFMtimeout = timeout
         print(f"Timeout set to {self.RFMtimeout} seconds")
         
+    def send_custom_packet(self, arg):
+        pass
+    
     def preloop(self):
         """Initialization before the command loop starts."""
         print("Starting the CLI...")
