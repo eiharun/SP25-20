@@ -326,9 +326,10 @@ bool RH_RF95_CH::recv(uint8_t* buf, uint8_t* len)
     {
 	ATOMIC_BLOCK_START;
 	// Skip the 4 headers that are at the beginning of the rxBuf
-	if (*len > _bufLen-RH_RF95_HEADER_LEN)
-	    *len = _bufLen-RH_RF95_HEADER_LEN;
-	memcpy(buf, _buf+RH_RF95_HEADER_LEN, *len);
+	// if (*len > _bufLen-RH_RF95_HEADER_LEN)
+	//     *len = _bufLen-RH_RF95_HEADER_LEN;
+    // memcpy(buf, _buf+RH_RF95_HEADER_LEN, *len);
+    memcpy(buf, _buf, *len);
 	ATOMIC_BLOCK_END;
     }
     clearRxBuf(); // This message accepted and cleared

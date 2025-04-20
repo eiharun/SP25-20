@@ -882,6 +882,17 @@ public:
         *len = _rxHeaderLen;
     }
 
+    // Extract Data from Buffer based on len field in header
+    void extractData(uint8_t* buf, uint8_t* data, uint8_t* len) {
+        *len = buf[3];
+        if (*len > 0) {
+            memcpy(data, buf + 4, *len);
+        }
+        else {
+            *data = 0;
+        }
+    }
+
 protected:
 
     /// Do whatever is necesary to establish the interrupt handler. Subclasses may have different needs 
