@@ -26,11 +26,13 @@
 
 #define SERVO_ANGLE 100
 
+#define RH_RF95_MAX_MESSAGE_LEN RH_RF95_MAX_PAYLOAD_LEN
+
 enum commands_t {
-  cIDLE=1, CUTDOWN=2, OPENs=64, OPENm=65
+  cIDLE=1, CUTDOWN=2, CLOSE=3, OPENs=64, OPENm=65
 };
 
-enum state_t { IDLE,
+enum state_t { LOWPOWER,
                AWAIT,
                RECV,
                AWAKE };

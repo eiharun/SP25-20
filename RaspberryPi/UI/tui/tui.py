@@ -187,4 +187,3 @@ class TUICommand(cmd.Cmd):
         assert isinstance(i, int), "Argument in byte_w_len() must be a string"
         num_bytes = (i.bit_length() + 7) // 8
         return num_bytes, i.to_bytes(num_bytes, byteorder='big')
-
