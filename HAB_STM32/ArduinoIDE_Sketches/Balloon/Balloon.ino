@@ -222,18 +222,9 @@ void interpret_command(uint8_t* recv_buf){
       length = 8; //Cap length to 8
       /* Only read lower 8 bytes */
     }
-    Serial.println("BCD Encoded data: ");
+    Serial.println("Binary Encoded data: ");
     uint64_t decimal=0;
     /* Decodes big endian decimal */
-    Serial.print("Length, recv_buf: ");
-    Serial.print(length);
-    Serial.print(" ");
-    Serial.print(recv_buf[0]);
-    Serial.print(" ");
-    Serial.print(recv_buf[1]);
-    Serial.print(" ");
-    Serial.print(recv_buf[2]);
-    Serial.print(" ");
     for (size_t i = offset; i < length;i++){
       decimal = (decimal<<8) | recv_buf[i];
     }
@@ -296,11 +287,6 @@ void execute_command_1(uint8_t cmd, uint64_t num){
       MotorBusy = true;
       // delay(num*1000);  
       // motor.write(0);
-      break;
-    }
-    case OPENm: {
-      Serial.print("Open (m): ");
-      Serial.println(num);
       break;
     }
     default: {

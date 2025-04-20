@@ -42,29 +42,29 @@ class RFM95(RFM9x):
     
     # Setters
     def setHeaders(self, seq:int, ack:int, CMD:int, length:int):
-        assert 0 <= seq <= 255
-        assert 0 <= ack <= 255
-        assert 0 <= CMD <= 255
-        assert 0 <= length <= 255
+        assert 0 <= seq <= 255, "seq must be between 0 and 255"
+        assert 0 <= ack <= 255, "ack must be between 0 and 255"
+        assert 0 <= CMD <= 255, "CMD must be between 0 and 255"
+        assert 0 <= length <= 255, "length must be between 0 and 255"
         self._seq = seq
         self._ack = ack
         self._CMD = CMD
         self._len = length
     
     def setSeq(self, seq:int):
-        assert 0 <= seq <= 255
+        assert 0 <= seq <= 255, "seq must be between 0 and 255"
         self._seq = seq
         
     def setAck(self, ack:int):
-        assert 0 <= ack <= 255
+        assert 0 <= ack <= 255, "ack must be between 0 and 255"
         self._ack = ack
         
     def setCMD(self, CMD:int):
-        assert 0 <= CMD <= 255
+        assert 0 <= CMD <= 255, "CMD must be between 0 and 255"
         self._CMD = CMD
         
     def setLen(self, length:int):
-        assert 0 <= length <= 255
+        assert 0 <= length <= 255, "length must be between 0 and 255"
         self._len = length
     
     # Getters
@@ -123,7 +123,7 @@ class RFM95(RFM9x):
         # efficient and proper way to ensure a precondition that the provided
         # buffer be within an expected range of bounds. Disable this check.
         # pylint: disable=len-as-condition
-        assert 0 <= len(data) <= 252
+        assert 0 <= len(data) <= 251, "data must be between 0 and 251 bytes"
         # pylint: enable=len-as-condition
         self.idle()  # Stop receiving to clear FIFO and keep it clear.
         # Fill the FIFO with a packet to send.
