@@ -15,8 +15,8 @@ class GUI:
         
     def run(self):
         try:
+            self.root.geometry("{}x{}+0+0". format(self.root.winfo_screenwidth(), self.root.winfo_screenheight()))
             self.root.mainloop()
-            self.root.attributes('-fullscreen', True) ## test
         except KeyboardInterrupt:
             print()
             logger.debug("Exiting Ground Station GUI")
