@@ -1,8 +1,22 @@
 from rfm95api import *
 import logging
 import cmd
+from functools import wraps
 
 logger = logging.getLogger(__name__)
+
+def handle_assertion(func):
+    """
+    A decorator that handles assertion errors
+    """
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        try:
+            result = func(*args, **kwargs)
+            return result
+        except AssertionError as e:
+            print(e)
+    return wrapper
 
 class TUI:
     """
@@ -12,23 +26,17 @@ class TUI:
     def __init__(self):
         constructor = RFM95Wrapper()
         self.rfm95 = constructor.construct()
-        logger.debug("RFM95 Constructed")
+        logger.info("RFM95 Constructed")
 
     def run(self):
         try:
-            f = open("idle.log", 'w')
-            f.close()
-            logger.debug("Starting TUI")
+            logger.info("Starting TUI")
             print("Starting TUI")
             tui_command = TUICommand(self.rfm95)
             tui_command.cmdloop()
-        except AssertionError as e:
-            print(f"AssertionError: {e}")
-            logger.error(f"AssertionError: {e}")
-            print("Please revise your input\nRFM95> ", end="")
         except KeyboardInterrupt:
             print()
-            logger.debug("Exiting Ground Station TUI")
+            logger.info("Exiting Ground Station TUI")
             print("Exiting Ground Station TUI")
             exit(0)
            
@@ -56,9 +64,11 @@ class TUICommand(cmd.Cmd):
         self.RFMtimeout = 5
         
     #----------------COMMANDS SET-------------------------#
+    @handle_assertion
     def do_open(self, arg):
         """Open the balloon vent for a given duration"""
         assert len(arg.split(' ')) == 2, "Invalid number of arguments. Requires at 2. Usage: open x [s/m]"
+        assert arg.split(' ')[0].isdigit(), "Argument 'x' must be a number"
         duration = int(arg.split(' ')[0])
         assert duration > 0, "Duration must be greater than 0"
         unit = arg.split(' ')[1].lower()
@@ -69,80 +79,99 @@ class TUICommand(cmd.Cmd):
         assert duration < 2**(4*8), "Duration is too long. Max duration is 2^32-1 seconds [4 bytes]"
         num_bytes, payload = self.byte_w_len(duration)
         self.rfm95.send(payload, seq=self.seq, ack=0, CMD=self.cmd, length=num_bytes)
-
         logger.debug(f"Verification: {duration}:{payload}:{num_bytes}:{int.from_bytes(payload,'big')}")
+        logger.debug(f"Payload Verification: {duration}:{payload}:{num_bytes}:{int.from_bytes(payload,'big')}")
         print(f"Opening vent for {duration} {'seconds' if unit == 's' else 'minutes'}")
-        print(f"Sent Headers: {self.seq} {self.cmd} {num_bytes}")
+        logger.debug(f"Sent Headers: {self.seq} 0 {self.cmd} {num_bytes}: {payload}")
+        logger.info(f"Opening vent for {duration} {'seconds' if unit == 's' else 'minutes'}")
 
         self.seq = (self.seq+1)%256
         recv = self.rfm95.receive(timeout=self.RFMtimeout)
 
         if recv is None:
             print("No Ack recieved. Verify gps data before resending")
+            logger.debug("No Ack recieved. Verify gps data before resending")
         else:
             seq,ack,cmd,length,data = self.rfm95.extractHeaders(recv)
             if cmd == 255:
                 print("Balloon is busy. Motor is open. Send close command to close it")
-            print(f"Recieved Headers: {seq} {ack} {cmd} {length} {data}")
-            print(f"\tSignal Strength: {self.rfm95.last_rssi}")
-            print(f"\tSNR: {self.rfm95.last_snr}")
+                logger.info("Balloon is busy. Motor is open. Send close command to close it")
+            logger.debug(f"Recieved Headers: {seq} {ack} {cmd} {length} {data}")
+            logger.debug(f"\tSignal Strength: {self.rfm95.last_rssi}")
+            logger.debug(f"\tSNR: {self.rfm95.last_snr}")
+            print("Received ACKNOWLEDGEMENT!")
 
+    @handle_assertion
     def do_cutdown(self, arg):
         """"Cutdown the balloon"""
+        assert len(arg) == 0, "cutdown takes no arguments"
         answer = input("Are you sure you want to cutdown the balloon? y/n:")
         if answer.lower() == 'y':
             print("Sending cutdown command")
             self.rfm95.send(b'\x00', seq=self.seq, ack=0, CMD=Commands.CUTDOWN.value, length=0)
+            logger.debug(f"Sent Headers: {self.seq} 0 {self.cmd} 0")
             self.seq = (self.seq+1)%256
             recv = self.rfm95.receive(timeout=self.RFMtimeout)
 
             if recv is None:
                 print("No Ack recieved. Verify gps data before resending")
+                logger.info("No Ack recieved. Verify gps data before resending")
             else:
-                seq,ack,cmd,length,data = self.rfm95.extractHeaders(recv)
-                if cmd == 255:
-                    print("Motor is open. Now Opening indefinitely")
-                print(f"Recieved Headers: {seq} {ack} {cmd} {length} {data}")
-                print(f"\tSignal Strength: {self.rfm95.last_rssi}")
-                print(f"\tSNR: {self.rfm95.last_snr}")
+                seq,ack,cmd,length,data = self.rfm95.extractHeaders(recv)                
+                logger.debug(f"Recieved Headers: {seq} {ack} {cmd} {length} {data}")
+                logger.debug(f"\tSignal Strength: {self.rfm95.last_rssi}")
+                logger.debug(f"\tSNR: {self.rfm95.last_snr}")
+                print("Received ACKNOWLEDGEMENT!")            
         else:
             print("Ok, returning")
             return
         
+    @handle_assertion
     def do_idle(self, arg):
         """Sends an IDLE command to the balloon 
         Usage: IDLE"""
+        assert len(arg) == 0, "idle takes no arguments"
         print("Sending idle command")
         self.rfm95.send(b'', seq=self.seq, ack=0, CMD=Commands.IDLE.value, length=0)
+        logger.debug(f"Sent Headers: {self.seq} 0 {self.cmd} 0")
         self.seq = (self.seq+1)%256
         recv = self.rfm95.receive(timeout=self.RFMtimeout)
         if recv is None:
-            print("No Ack recieved. Verify gps data before resending")
+            print("No Ack recieved")
+            logger.info("No Ack recieved")
         else:
             seq,ack,cmd,length,data = self.rfm95.extractHeaders(recv)
             if cmd == 255:
                 print("Balloon is busy. Motor is open. Send close command to close it")
-            print(f"Recieved Headers: {seq} {ack} {cmd} {length} {data}")
-            print(f"\tSignal Strength: {self.rfm95.last_rssi}")
-            print(f"\tSNR: {self.rfm95.last_snr}")
-    
+                logger.info("Balloon is busy. Motor is open. Send close command to close it")
+            logger.debug(f"Recieved Headers: {seq} {ack} {cmd} {length} {data}")
+            logger.debug(f"\tSignal Strength: {self.rfm95.last_rssi}")
+            logger.debug(f"\tSNR: {self.rfm95.last_snr}")
+            print("Received ACKNOWLEDGEMENT!")            
+
+    @handle_assertion
     def do_close(self, arg):
         """Closes the balloon vent""" 
+        assert len(arg) == 0, "close takes no arguments"
         answer = input("Are you sure you want to close the balloon? y/n:")
         if answer.lower() == 'y':
             print("Sending close command")
             self.rfm95.send(b'\x00', seq=self.seq, ack=0, CMD=Commands.CLOSE.value, length=0)
+            logger.debug(f"Sent Headers: {self.seq} 0 {self.cmd} 0")
             self.seq = (self.seq+1)%256
             recv = self.rfm95.receive(timeout=self.RFMtimeout)
 
             if recv is None:
-                print("No Ack recieved. Verify gps data before resending")
+                print("No Ack recieved. Feel free to resend")
+                logger.debug("No Ack recieved. Feel free to resend")
             else:
                 seq,ack,cmd,length,data = self.rfm95.extractHeaders(recv)
+                logger.debug(f"Recieved Headers: {seq} {ack} {cmd} {length} {data}")
+                logger.debug(f"\tSignal Strength: {self.rfm95.last_rssi}")
+                logger.debug(f"\tSNR: {self.rfm95.last_snr}")
+                print("Received ACKNOWLEDGEMENT!")            
                 print("Motor is open. Closing")
-                print(f"Recieved Headers: {seq} {ack} {cmd} {length} {data}")
-                print(f"\tSignal Strength: {self.rfm95.last_rssi}")
-                print(f"\tSNR: {self.rfm95.last_snr}")
+                
         else:
             print("Ok, returning")
             return
@@ -183,23 +212,27 @@ class TUICommand(cmd.Cmd):
         print("This will set the timeout for the RFM95 to 'x' seconds")
         print("This will not affect the balloon. It is only for the ground station")
         print("The default timeout is 5 seconds")
-        print(f"Current timeout is {self.RFMtimeout} seconds")
         print("To set the timeout to 10 seconds")
         print("\tset_timeout 10")
+        print(f"\nCurrent timeout is {self.RFMtimeout} seconds")
         
     def help_send_custom_packet(self):
         pass
         
     #----------------MISC---------------------------------#    
         
+    @handle_assertion
     def do_set_timeout(self, arg):
-        assert len(arg.split(' ')) == 1, "Invalid number of arguments. Requires 1. Usage: set_timeout x"
+        assert len(arg) == 1, "Invalid number of arguments. Requires 1. Usage: set_timeout x"
+        assert arg.split(' ')[0].isdigit(), "Argument 'x' must be a number"
         timeout = int(arg.split(' ')[0])
         assert timeout > 0, "Timeout must be greater than 0"
         assert timeout < 30, "Timeout must be less than 30 seconds (if you're not getting a response after a 30 second timeout then something is wrong)"
         self.RFMtimeout = timeout
         print(f"Timeout set to {self.RFMtimeout} seconds")
+        logger.info(f"Timeout set to {self.RFMtimeout} seconds")
         
+    @handle_assertion
     def send_custom_packet(self, arg):
         pass
     
@@ -229,9 +262,6 @@ class TUICommand(cmd.Cmd):
         print(self.intro)
         return False
     
-    def get_names(self):
-        print(n for n in dir(self.__class__))
-        return [n for n in dir(self.__class__) if n not in self.__hiden_methods]
     
     #----------------HELPERS------------------------------#    
     
