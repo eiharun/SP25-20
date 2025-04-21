@@ -155,7 +155,7 @@ void loop() {
 #endif
 
       /* Send ACK */
-      if (MotorBusy && cmd!=3){
+      if (MotorBusy && cmd!=3 && cmd!=2){
         rf95.setHeaders(seq, ack, 255, 0);
         seq=(seq+1)%256;
         rf95.send(NULL, 0);
