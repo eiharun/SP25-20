@@ -16,6 +16,7 @@ class GUI:
     def run(self):
         try:
             self.root.mainloop()
+            self.root.attributes('-fullscreen', True) ## test
         except KeyboardInterrupt:
             print()
             logger.debug("Exiting Ground Station GUI")
@@ -30,6 +31,7 @@ class Trans:
         logger.debug("RFM95 Constructed")
         self.cmd = Commands.DEFAULT.value
         self.seq = 0
+        self.RFMtimeout = 5
 
         # cutdown, idle, close, and entry
         self.cutdown_button = tk.Button(root, text="Cutdown", width=6, height=3, bg='red', font=("Arial", 12), command=self.check_cutdown)
@@ -40,6 +42,9 @@ class Trans:
 
         self.close_button = tk.Button(root, text="Close", width=6, height=3, font=("Arial", 12), command=self.check_close)
         self.close_button.grid(row=6, column=2, columnspan=1, padx=5, pady=5)
+
+        self.close_button = tk.Button(root, text="SetTimeout", width=6, height=3, font=("Arial", 11), command=self.set_timeout)
+        self.close_button.grid(row=6, column=3, columnspan=1, padx=5, pady=5)
 
         self.entry = tk.Entry(root, width=20, font=("Arial", 16), justify="center")
         self.entry.grid(row=0, column=0, columnspan=3, padx=10, pady=10)
@@ -140,28 +145,27 @@ class Trans:
     def check_idle(self):
         self.cmd = Commands.IDLE.value
         self.lockoutstart()
-        if messagebox.askokcancel("Idle Confirmation", "Are you sure you want to send idle?"):
-            self.log("Sending IDLE command",tag="info")
-            self.printout()
-        else:
-            self.result_label.config(text= f'Cancel sending idle',fg='orange')
-            self.log("Canceling IDLE command",tag="warning")
+        self.log("Sending IDLE command",tag="info")
+        self.printout()
         self.lockoutend()
         
     def printout(self, arg = b''):
-        assert self.cmd != Commands.DEFAULT.value
+        assert self.cmd != Commands.DEFAULT.value, "Invalid command"
         num_bytes, payload = 0, b''
         if type(arg) is int:
             num_bytes, payload = self.byte_w_len(arg)
 
         self.rfm95.send(payload, seq=self.seq, ack=0, CMD=self.cmd, length=num_bytes)
         self.seq = (self.seq+1)%256
-        response = self.rfm95.receive(timeout=5.0)
+        response = self.rfm95.receive(timeout=self.RFMtimeout)
 
         if response:
             seq, ack, cmd, length, data = self.rfm95.extractHeaders(response)
             if cmd == 255:
-                self.log("Motor is open, closing if close was sent \n\t opening indefinitely if cutdown was sent")
+                self.log("Motor is busy\n")
+                self.flash_screen()
+            else:
+                self.flash_screen(color="green")
             self.result_label.config(text= f"ACK received", fg='green')
             self.log(f"Recieved Headers: {seq} {ack} {cmd} {length}")
             self.log(f"Data: {data}")
@@ -224,6 +228,30 @@ class Trans:
         assert isinstance(i, int), "Argument in byte_w_len() must be a string"
         num_bytes = (i.bit_length() + 7) // 8
         return num_bytes, i.to_bytes(num_bytes, byteorder='big')
+    
+    def flash_screen(self, color="green", duration=100):
+        original_color = self.root["bg"]
+        self.root.configure(bg=color)
+        self.root.after(duration, lambda: self.root.configure(bg=original_color))
+
+    def set_timeout(self):
+        time_val = self.entry.get()
+        if not time_val.isdigit():
+            self.result_label.config(text="Please enter a valid number", fg="red")
+            self.log("Invalid entry: not a number", tag="error")
+            return
+        if time_val > 30:
+            self.result_label.config(text="Please enter a valid number", fg="red")
+            self.log("Set it between 0 and 30 seconds", tag="error")
+        self.entry.delete(0, tk.END)
+        
+        self.lockoutstart()
+        if messagebox.askokcancel("Set RFM95 Timeout", f"Are you sure you want to set the timeout to {time_val}?"):
+            self.result_label.config(text= f"Set timeout to {time_val} seconds", fg="black")
+            self.log(f"Set timeout to {time_val} seconds",tag='info')
+            self.RFMtimeout = time_val
+        self.lockoutend()
+
 
 # Run the App
 if __name__ == "__main__":
