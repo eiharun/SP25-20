@@ -161,7 +161,7 @@ class Trans:
 
         if response:
             seq, ack, cmd, length, data = self.rfm95.extractHeaders(response)
-            if cmd == 255:
+            if cmd == Commands.BUSY.value:
                 self.log("Motor is busy\n")
                 self.flash_screen()
             else:
