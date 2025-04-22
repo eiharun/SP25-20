@@ -43,7 +43,7 @@ class Trans:
         self.close_button = tk.Button(root, text="Close", width=12, height=6, font=("Arial", 20), command=self.check_close)
         self.close_button.grid(row=3, column=3, padx=5, pady=5)
 
-        self.set_button = tk.Button(root, text="Set Timer", width=12, height=6, font=("Arial", 20), command=self.set_timeout)
+        self.set_button = tk.Button(root, text="Set Timeout", width=12, height=6, font=("Arial", 20), command=self.set_timeout)
         self.set_button.grid(row=4, column=3, padx=5, pady=5)
 
         self.entry = tk.Entry(root, width=40, font=("Arial", 20), justify="center")
@@ -106,40 +106,44 @@ class Trans:
             self.log("Invalid entry: not a number", tag="error")
             return
         self.entry.delete(0, tk.END)
-        time_unit = self.ask_time_unit()
-        self.cmd = Commands.OPENs.value if time_unit == "seconds" else Commands.OPENm.value
+        time_unit = self.ask(purpose="TimeUnit", message=None)
+    
+        pTime = time_val if time_unit == "minutes" else time_val
+        time_val = time_val*60 if time_unit == "minutes" else time_val
+        self.cmd = Commands.OPEN.value
+        
         # confirmation
         self.lockoutstart()
-        if messagebox.askokcancel("Open Confirmation", f"Are you sure you want to open for {time_val} {time_unit}?"):
-            self.result_label.config(text= f"Opening for {time_val} {time_unit}", fg="black")
+        if self.ask(purpose="Confirmation", message =f"Are you sure you want to open for {pTime} {time_unit}?" ) == "OK":
+            self.result_label.config(text= f"Opening for {pTime} {time_unit}", fg="black")
             self.log(f"Opening for {time_val} {time_unit}",tag='info')
             self.printout(int(time_val))
         else:
-            self.result_label.config(text="Canceled OPEN command", fg="orange")
-            self.log("User canceled OPEN command", tag="warning")  
+            self.result_label.config(text="Canceled OPEN command", fg="black")
+            self.log("User canceled OPEN command", tag="info")  
         self.lockoutend()
         
     def check_cutdown(self):
         self.cmd = Commands.CUTDOWN.value
         self.lockoutstart()
-        if messagebox.askokcancel("Cutdown Confirmation", "Are you sure you want to cutdown?"):
+        if self.ask(purpose="Confirmation", message ="Are you sure you want to cutdown?" ) == "OK":
             self.log("Sending CUTDOWN command",tag='info')
             self.printout()
         else:
-            self.log("User canceled CUTDOWN command", tag="warning")
-            self.result_label.config(text= f'Canceled CUTDOWN command',fg='orange')
+            self.log("User canceled CUTDOWN command", tag="info")
+            self.result_label.config(text= f'Canceled CUTDOWN command',fg='black')
 
         self.lockoutend()
 
     def check_close(self):
         self.cmd = Commands.CLOSE.value
         self.lockoutstart()
-        if messagebox.askokcancel("Close Confirmation", "Are you sure you want to closes the vent?"):
+        if self.ask(purpose="Confirmation", message ="Are you sure you want to closes the vent?" ) == "OK":
             self.log("Sending CLOSE command",tag='info')
             self.printout()
         else:
-            self.log("User canceled CLOSE command", tag="warning")
-            self.result_label.config(text= f'Canceled CLOSE command',fg='orange')
+            self.log("User canceled CLOSE command", tag="info")
+            self.result_label.config(text= f'Canceled CLOSE command',fg='black')
         self.lockoutend()
 
     def check_idle(self):
@@ -150,7 +154,7 @@ class Trans:
         self.lockoutend()
         
     def printout(self, arg = b''):
-        pass
+        #pass
         assert self.cmd != Commands.DEFAULT.value, "Invalid command"
         num_bytes, payload = 0, b''
         if type(arg) is int:
@@ -178,31 +182,41 @@ class Trans:
             self.log("Timeout waiting for ACK", tag="error")
 
     #---------------------------------------HELPERS-----------------------------------------#   
-    def ask_time_unit(self):
-        selected_unit = tk.StringVar()
+    def ask(self, purpose, message):
+        selected = tk.StringVar()
 
         def choose(unit):
-            selected_unit.set(unit)
+            selected.set(unit)
             popup.destroy()
+        popup = tk.Toplevel(self.root)
+        popup.grab_set() 
+        if purpose == "TimeUnit":
+            title ="Select Time Unit"
+            text = "Choose time unit:"
+            left_text = "seconds"
+            right_text = "minutes"
+            label = tk.Label(popup, text=text ,font=("Arial", 20))
+            
+        elif purpose == "Confirmation":
+            title = purpose
+            text = message
+            left_text = "Cancel"
+            right_text = "OK"
+            label = tk.Label(popup, text=text ,font=("Arial", 15))
 
         # Create popup window
-        popup = tk.Toplevel(self.root)
-        popup.title("Select Time Unit")
+        
+        popup.title(title)
         popup.geometry("500x200")
         popup.resizable(False, False)
-        popup.grab_set() 
-
-        label = tk.Label(popup, text="Choose time unit:",font=("Arial", 20))
         label.pack(pady=10)
-
-        btn_seconds = tk.Button(popup, text="Seconds", width=10,font=("Arial", 20), command=lambda: choose("seconds"))
+        btn_seconds = tk.Button(popup, text=left_text, width=10,font=("Arial", 20), command=lambda: choose(left_text))
         btn_seconds.pack(side="left", padx=20, pady=10)
-
-        btn_minutes = tk.Button(popup, text="Minutes", width=10,font=("Arial", 20), command=lambda: choose("minutes"))
+        btn_minutes = tk.Button(popup, text=right_text, width=10,font=("Arial", 20), command=lambda: choose(right_text))
         btn_minutes.pack(side="right", padx=20, pady=10)
 
         popup.wait_window() 
-        return selected_unit.get()
+        return selected.get()
 
     def lockoutstart(self):
         self.idle_button.config(state='disabled')
@@ -245,16 +259,21 @@ class Trans:
             self.result_label.config(text="Please enter a valid number", fg="red")
             self.log("Invalid entry: not a number", tag="error")
             return
+        time_val = int(time_val)
         if time_val > 30 or time_val < 0:
             self.result_label.config(text="Please enter a valid number", fg="red")
-            self.log("Set it between 0 and 30 seconds", tag="error")
+            self.log("Timeout can only be between 0 and 30 seconds", tag="error")
+            return
         self.entry.delete(0, tk.END)
         
         self.lockoutstart()
-        if messagebox.askokcancel("Set RFM95 Timeout", f"Are you sure you want to set the timeout to {time_val}?"):
+        if self.ask(purpose="Confirmation", message= f"Are you sure you want to set the timeout to {time_val}?") == "OK":
             self.result_label.config(text= f"Set timeout to {time_val} seconds", fg="black")
             self.log(f"Set timeout to {time_val} seconds",tag='info')
             self.RFMtimeout = time_val
+        else:
+            self.log("User canceled setting timout", tag="info")
+            self.result_label.config(text= f'Canceled setting timout',fg='black')
         self.lockoutend()
 
 

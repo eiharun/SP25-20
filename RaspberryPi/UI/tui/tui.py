@@ -73,7 +73,7 @@ class TUICommand(cmd.Cmd):
         assert duration > 0, "Duration must be greater than 0"
         unit = arg.split(' ')[1].lower()
         assert unit == 's' or unit == 'm', "Invalid unit. Must be 's' or 'm'"
-        self.cmd = Commands.OPENs.value 
+        self.cmd = Commands.OPEN.value 
         if unit == 'm':
             duration = duration * 60 # Instead of having an OPENm command, we convert minutes to seconds as 4 bytes is enough to represent 50k days
         assert duration < 2**(4*8), "Duration is too long. Max duration is 2^32-1 seconds [4 bytes]"

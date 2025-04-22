@@ -7,7 +7,7 @@ class Commands(Enum):
     CUTDOWN=2   # Cutdown the balloon
     CLOSE=3     # Close the vent
     #up to 11
-    OPENs=64    # Open for x seconds, then close
+    OPEN=64    # Open for x seconds, then close
     #up to 193
     #commands with tbd data encoding schemes
     TEST=194    # Test command
