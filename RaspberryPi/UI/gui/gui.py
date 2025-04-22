@@ -2,7 +2,7 @@ import tkinter as tk
 from tkinter import messagebox
 from tkinter import scrolledtext
 
-from rfm95api import *
+from UI.rfm95api import *
 import logging
 
 logger = logging.getLogger(__name__)

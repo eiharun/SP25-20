@@ -1,5 +1,9 @@
 # User Interface in Python [UI](UI/)
 
+## Desktop file
+
+Put the GUI.desktop on the desktop and double click it to run
+
 ## Directions
 
 > Name: balloon

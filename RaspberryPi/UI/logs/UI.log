@@ -96,3 +96,18 @@
 2025-04-22 12:55:23,925:DEBUG:tui.tui:do_open:	Signal Strength: -75
 2025-04-22 12:55:23,925:DEBUG:tui.tui:do_open:	SNR: 5.25
 2025-04-22 12:55:32,594:INFO:tui.tui:run:Exiting Ground Station TUI
+2025-04-22 18:37:24,202:INFO:__main__:<module>:--------------------------Starting Program----------------------------
+2025-04-22 18:37:24,203:INFO:__main__:<module>:Starting GUI
+2025-04-22 18:37:24,884:DEBUG:gui.gui:__init__:RFM95 Constructed
+2025-04-22 18:48:37,237:INFO:__main__:<module>:--------------------------Starting Program----------------------------
+2025-04-22 18:48:37,240:INFO:__main__:<module>:Starting GUI
+2025-04-22 18:48:38,321:DEBUG:UI.gui.gui:__init__:RFM95 Constructed
+2025-04-22 18:48:58,935:INFO:__main__:<module>:--------------------------Starting Program----------------------------
+2025-04-22 18:48:58,939:INFO:__main__:<module>:Starting GUI
+2025-04-22 18:48:59,846:DEBUG:UI.gui.gui:__init__:RFM95 Constructed
+2025-04-22 18:50:11,305:INFO:__main__:<module>:--------------------------Starting Program----------------------------
+2025-04-22 18:50:11,306:INFO:__main__:<module>:Starting GUI
+2025-04-22 18:50:12,368:DEBUG:UI.gui.gui:__init__:RFM95 Constructed
+2025-04-22 18:50:54,251:INFO:__main__:<module>:--------------------------Starting Program----------------------------
+2025-04-22 18:50:54,253:INFO:__main__:<module>:Starting GUI
+2025-04-22 18:50:55,323:DEBUG:UI.gui.gui:__init__:RFM95 Constructed

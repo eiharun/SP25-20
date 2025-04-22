@@ -1,7 +1,7 @@
 import argparse
 import logging
-from tui import TUI
-from gui import GUI
+from UI.tui import TUI
+from UI.gui import GUI
 
 logger = logging.getLogger(__name__)
 
