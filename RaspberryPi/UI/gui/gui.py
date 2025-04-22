@@ -34,27 +34,27 @@ class Trans:
         self.RFMtimeout = 5
 
         # cutdown, idle, close, and entry
-        self.cutdown_button = tk.Button(root, text="Cutdown", width=6, height=3, bg='red', font=("Arial", 12), command=self.check_cutdown)
-        self.cutdown_button.grid(row=6, column=0, columnspan=1, padx=5, pady=5)
+        self.cutdown_button = tk.Button(root, text="Cutdown", width=6, height=3, bg='red', font=("Arial", 14), command=self.check_cutdown)
+        self.cutdown_button.grid(row=1, column=3, padx=5, pady=5)
 
-        self.idle_button = tk.Button(root, text="Idle", width=6, height=3, font=("Arial", 12), command=self.check_idle)
-        self.idle_button.grid(row=6, column=1, columnspan=1, padx=5, pady=5)
+        self.idle_button = tk.Button(root, text="Idle", width=6, height=3, font=("Arial", 14), command=self.check_idle)
+        self.idle_button.grid(row=2, column=3, padx=5, pady=5)
 
-        self.close_button = tk.Button(root, text="Close", width=6, height=3, font=("Arial", 12), command=self.check_close)
-        self.close_button.grid(row=6, column=2, columnspan=1, padx=5, pady=5)
+        self.close_button = tk.Button(root, text="Close", width=6, height=3, font=("Arial", 14), command=self.check_close)
+        self.close_button.grid(row=3, column=3, padx=5, pady=5)
 
-        self.close_button = tk.Button(root, text="SetTimeout", width=6, height=3, font=("Arial", 11), command=self.set_timeout)
-        self.close_button.grid(row=6, column=3, columnspan=1, padx=5, pady=5)
+        self.close_button = tk.Button(root, text="Set", width=6, height=3, font=("Arial", 14), command=self.set_timeout)
+        self.close_button.grid(row=4, column=3, padx=5, pady=5)
 
         self.entry = tk.Entry(root, width=20, font=("Arial", 16), justify="center")
-        self.entry.grid(row=0, column=0, columnspan=3, padx=10, pady=10)
+        self.entry.grid(row=0, column=0, columnspan=4, padx=10, pady=10)
 
         # create buttons
         self.buttons = [
             "1", "2", "3",
             "4", "5", "6",
             "7", "8", "9",
-            "Clear", "0", "Enter"
+            "Clear", "0", "Open"
         ]
         
         self.create_buttons()
@@ -63,8 +63,8 @@ class Trans:
         self.result_label = tk.Label(root, text="", font=("Arial", 12))
         self.result_label.grid(row=5, column=0, columnspan=3, pady=10)
 
-        self.log_box = scrolledtext.ScrolledText(root, width=50, height=10, font=("Courier", 10), state='disabled', wrap='word')
-        self.log_box.grid(row=7, column=0, columnspan=4, padx=10, pady=10)
+        self.log_box = scrolledtext.ScrolledText(root, width=40, height=30, font=("Courier", 10), state='disabled', wrap='word')
+        self.log_box.grid(row=0, column=4, rowspan=5, padx=10, pady=10)
 
         self.setup_log_tags()
 
@@ -75,7 +75,7 @@ class Trans:
                 cmd = lambda b=button: self.button_click(b)
             elif button == "Clear":
                 cmd = self.clear_entry
-            elif button == "Enter":
+            elif button == "Open":
                 cmd = self.check_send
 
             tk.Button(self.root, text=button, width=6, height=3, font=("Arial", 14), command=cmd).grid(
@@ -240,7 +240,7 @@ class Trans:
             self.result_label.config(text="Please enter a valid number", fg="red")
             self.log("Invalid entry: not a number", tag="error")
             return
-        if time_val > 30:
+        if time_val > 30 or time_val < 0:
             self.result_label.config(text="Please enter a valid number", fg="red")
             self.log("Set it between 0 and 30 seconds", tag="error")
         self.entry.delete(0, tk.END)
@@ -258,4 +258,6 @@ if __name__ == "__main__":
     root = tk.Tk()
     trans = Trans(root)
     root.title("Balloon Control Interface")
+   
+    root.geometry("{}x{}+0+0". format(root.winfo_screenwidth(), root.winfo_screenheight()))
     root.mainloop()
