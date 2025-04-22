@@ -2,7 +2,7 @@ import tkinter as tk
 from tkinter import messagebox
 from tkinter import scrolledtext
 
-from rfm95api import *
+#from rfm95api import *
 import logging
 
 logger = logging.getLogger(__name__)
@@ -27,26 +27,26 @@ class Trans:
     #------------------------------------------------------UI-----------------------------------------------------------#
     def __init__(self, root):
         self.root = root
-        self.rfm95 = RFM95Wrapper().construct()
+        #self.rfm95 = RFM95Wrapper().construct()
         logger.debug("RFM95 Constructed")
-        self.cmd = Commands.DEFAULT.value
+        #self.cmd = Commands.DEFAULT.value
         self.seq = 0
         self.RFMtimeout = 5
 
         # cutdown, idle, close, and entry
-        self.cutdown_button = tk.Button(root, text="Cutdown", width=6, height=3, bg='red', font=("Arial", 14), command=self.check_cutdown)
+        self.cutdown_button = tk.Button(root, text="Cutdown", width=12, height=6, bg='red', font=("Arial", 20), command=self.check_cutdown)
         self.cutdown_button.grid(row=1, column=3, padx=5, pady=5)
 
-        self.idle_button = tk.Button(root, text="Idle", width=6, height=3, font=("Arial", 14), command=self.check_idle)
+        self.idle_button = tk.Button(root, text="Idle", width=12, height=6, font=("Arial", 20), command=self.check_idle)
         self.idle_button.grid(row=2, column=3, padx=5, pady=5)
 
-        self.close_button = tk.Button(root, text="Close", width=6, height=3, font=("Arial", 14), command=self.check_close)
+        self.close_button = tk.Button(root, text="Close", width=12, height=6, font=("Arial", 20), command=self.check_close)
         self.close_button.grid(row=3, column=3, padx=5, pady=5)
 
-        self.close_button = tk.Button(root, text="Set", width=6, height=3, font=("Arial", 14), command=self.set_timeout)
-        self.close_button.grid(row=4, column=3, padx=5, pady=5)
+        self.set_button = tk.Button(root, text="Set Timer", width=12, height=6, font=("Arial", 20), command=self.set_timeout)
+        self.set_button.grid(row=4, column=3, padx=5, pady=5)
 
-        self.entry = tk.Entry(root, width=20, font=("Arial", 16), justify="center")
+        self.entry = tk.Entry(root, width=40, font=("Arial", 20), justify="center")
         self.entry.grid(row=0, column=0, columnspan=4, padx=10, pady=10)
 
         # create buttons
@@ -60,10 +60,10 @@ class Trans:
         self.create_buttons()
 
         # create label
-        self.result_label = tk.Label(root, text="", font=("Arial", 12))
-        self.result_label.grid(row=5, column=0, columnspan=3, pady=10)
+        self.result_label = tk.Label(root, text="", font=("Arial", 20))
+        self.result_label.grid(row=5, column=0, columnspan=4, pady=10)
 
-        self.log_box = scrolledtext.ScrolledText(root, width=40, height=30, font=("Courier", 10), state='disabled', wrap='word')
+        self.log_box = scrolledtext.ScrolledText(root, width=65, height=30, font=("Courier", 20), state='disabled', wrap='word')
         self.log_box.grid(row=0, column=4, rowspan=5, padx=10, pady=10)
 
         self.setup_log_tags()
@@ -78,7 +78,7 @@ class Trans:
             elif button == "Open":
                 cmd = self.check_send
 
-            tk.Button(self.root, text=button, width=6, height=3, font=("Arial", 14), command=cmd).grid(
+            tk.Button(self.root, text=button, width=12, height=6, font=("Arial", 20), command=cmd).grid(
                 row=row_val, column=col_val, padx=5, pady=5
             )
 
@@ -107,7 +107,7 @@ class Trans:
             return
         self.entry.delete(0, tk.END)
         time_unit = self.ask_time_unit()
-        self.cmd = Commands.OPENs.value if time_unit == "seconds" else Commands.OPENm.value
+        #self.cmd = Commands.OPENs.value if time_unit == "seconds" else Commands.OPENm.value
         # confirmation
         self.lockoutstart()
         if messagebox.askokcancel("Open Confirmation", f"Are you sure you want to open for {time_val} {time_unit}?"):
@@ -120,7 +120,7 @@ class Trans:
         self.lockoutend()
         
     def check_cutdown(self):
-        self.cmd = Commands.CUTDOWN.value
+        #self.cmd = Commands.CUTDOWN.value
         self.lockoutstart()
         if messagebox.askokcancel("Cutdown Confirmation", "Are you sure you want to cutdown?"):
             self.log("Sending CUTDOWN command",tag='info')
@@ -132,7 +132,7 @@ class Trans:
         self.lockoutend()
 
     def check_close(self):
-        self.cmd = Commands.CLOSE.value
+        #self.cmd = Commands.CLOSE.value
         self.lockoutstart()
         if messagebox.askokcancel("Close Confirmation", "Are you sure you want to closes the vent?"):
             self.log("Sending CLOSE command",tag='info')
@@ -143,38 +143,39 @@ class Trans:
         self.lockoutend()
 
     def check_idle(self):
-        self.cmd = Commands.IDLE.value
+        #self.cmd = Commands.IDLE.value
         self.lockoutstart()
         self.log("Sending IDLE command",tag="info")
         self.printout()
         self.lockoutend()
         
     def printout(self, arg = b''):
-        assert self.cmd != Commands.DEFAULT.value, "Invalid command"
-        num_bytes, payload = 0, b''
-        if type(arg) is int:
-            num_bytes, payload = self.byte_w_len(arg)
+        pass
+        # assert self.cmd != Commands.DEFAULT.value, "Invalid command"
+        # num_bytes, payload = 0, b''
+        # if type(arg) is int:
+        #     num_bytes, payload = self.byte_w_len(arg)
 
-        self.rfm95.send(payload, seq=self.seq, ack=0, CMD=self.cmd, length=num_bytes)
-        self.seq = (self.seq+1)%256
-        response = self.rfm95.receive(timeout=self.RFMtimeout)
+        # self.rfm95.send(payload, seq=self.seq, ack=0, CMD=self.cmd, length=num_bytes)
+        # self.seq = (self.seq+1)%256
+        # response = self.rfm95.receive(timeout=self.RFMtimeout)
 
-        if response:
-            seq, ack, cmd, length, data = self.rfm95.extractHeaders(response)
-            if cmd == Commands.BUSY.value:
-                self.log("Motor is busy\n")
-                self.flash_screen()
-            else:
-                self.flash_screen(color="green")
-            self.result_label.config(text= f"ACK received", fg='green')
-            self.log(f"Recieved Headers: {seq} {ack} {cmd} {length}")
-            self.log(f"Data: {data}")
-            self.log(f"\tSignal Strength: {self.rfm95.last_rssi}")
-            self.log(f"\tSNR: {self.rfm95.last_snr}")
+        # if response:
+        #     seq, ack, cmd, length, data = self.rfm95.extractHeaders(response)
+        #     if cmd == Commands.BUSY.value:
+        #         self.log("Motor is busy\n")
+        #         self.flash_screen("yellow")
+        #     else:
+        #         self.flash_screen()
+        #     self.result_label.config(text= f"ACK received", fg='green')
+        #     self.log(f"Recieved Headers: {seq} {ack} {cmd} {length}")
+        #     self.log(f"Data: {data}")
+        #     self.log(f"\tSignal Strength: {self.rfm95.last_rssi}")
+        #     self.log(f"\tSNR: {self.rfm95.last_snr}")
 
-        else:
-            self.result_label.config(text= f"Timeout Waiting", fg='red')
-            self.log("Timeout waiting for ACK", tag="error")
+        # else:
+        #     self.result_label.config(text= f"Timeout Waiting", fg='red')
+        #     self.log("Timeout waiting for ACK", tag="error")
 
     #---------------------------------------HELPERS-----------------------------------------#   
     def ask_time_unit(self):
@@ -187,17 +188,17 @@ class Trans:
         # Create popup window
         popup = tk.Toplevel(self.root)
         popup.title("Select Time Unit")
-        popup.geometry("250x100")
+        popup.geometry("500x200")
         popup.resizable(False, False)
         popup.grab_set() 
 
-        label = tk.Label(popup, text="Choose time unit:")
+        label = tk.Label(popup, text="Choose time unit:",font=("Arial", 20))
         label.pack(pady=10)
 
-        btn_seconds = tk.Button(popup, text="Seconds", width=10, command=lambda: choose("seconds"))
+        btn_seconds = tk.Button(popup, text="Seconds", width=10,font=("Arial", 20), command=lambda: choose("seconds"))
         btn_seconds.pack(side="left", padx=20, pady=10)
 
-        btn_minutes = tk.Button(popup, text="Minutes", width=10, command=lambda: choose("minutes"))
+        btn_minutes = tk.Button(popup, text="Minutes", width=10,font=("Arial", 20), command=lambda: choose("minutes"))
         btn_minutes.pack(side="right", padx=20, pady=10)
 
         popup.wait_window() 
@@ -207,11 +208,15 @@ class Trans:
         self.idle_button.config(state='disabled')
         self.entry.config(state='disabled')
         self.cutdown_button.config(state='disabled')
+        self.close_button.config(state='disabled')
+        self.set_button.config(state='disabled')
         
     def lockoutend(self):
-        self.root.after(1000, lambda: self.idle_button.config(state='normal'))
-        self.root.after(1000, lambda: self.entry.config(state='normal'))
-        self.root.after(1000, lambda: self.cutdown_button.config(state='normal'))
+        self.root.after(1500, lambda: self.idle_button.config(state='normal'))
+        self.root.after(1500, lambda: self.entry.config(state='normal'))
+        self.root.after(1500, lambda: self.cutdown_button.config(state='normal'))
+        self.root.after(1500, lambda: self.close_button.config(state='normal'))
+        self.root.after(1500, lambda: self.set_button.config(state='normal'))
 
     def setup_log_tags(self):
         self.log_box.tag_config('info', foreground='black')
