@@ -2,7 +2,7 @@ import tkinter as tk
 from tkinter import messagebox
 from tkinter import scrolledtext
 
-#from UI.rfm95api import *
+from UI.rfm95api import *
 import logging
 
 logger = logging.getLogger(__name__)
@@ -28,9 +28,9 @@ class Trans:
     def __init__(self, root):
 
         self.root = root
-        #self.rfm95 = RFM95Wrapper().construct()
+        self.rfm95 = RFM95Wrapper().construct()
         logger.debug("RFM95 Constructed")
-        #self.cmd = Commands.DEFAULT.value
+        self.cmd = Commands.DEFAULT.value
         self.seq = 0
         self.RFMtimeout = 5
 
@@ -64,8 +64,8 @@ class Trans:
         self.result_label = tk.Label(root, text="", font=("Arial", 15))
         self.result_label.grid(row=5, column=0, columnspan=4, pady=10)
 
-        self.log_box = scrolledtext.ScrolledText(root, width=40, height=20, font=("Courier", 15), state='disabled', wrap='word')
-        self.log_box.grid(row=0, column=5, rowspan=5, padx=10, pady=10)
+        self.log_box = scrolledtext.ScrolledText(root, width=40, height=25, font=("Courier", 15), state='disabled', wrap='word')
+        self.log_box.grid(row=0, column=5, rowspan=6, padx=10, pady=10)
 
         self.setup_log_tags()
 
@@ -114,7 +114,7 @@ class Trans:
         
         pTime = time_val
         time_val = time_val*60 if time_unit == "minutes" else time_val
-        #self.cmd = Commands.OPEN.value
+        self.cmd = Commands.OPEN.value
         
         # confirmation
         self.lockoutstart()
@@ -128,7 +128,7 @@ class Trans:
         self.lockoutend()
         
     def check_cutdown(self):
-        #self.cmd = Commands.CUTDOWN.value
+        self.cmd = Commands.CUTDOWN.value
         self.lockoutstart()
         if self.ask(purpose="Confirmation", message ="Are you sure you want to cutdown?" ) == "OK":
             self.log("Sending CUTDOWN command",tag='info')
@@ -140,7 +140,7 @@ class Trans:
         self.lockoutend()
 
     def check_close(self):
-        #self.cmd = Commands.CLOSE.value
+        self.cmd = Commands.CLOSE.value
         self.lockoutstart()
         if self.ask(purpose="Confirmation", message ="Are you sure you want to close the vent?" ) == "OK":
             self.log("Sending CLOSE command",tag='info')
@@ -151,39 +151,39 @@ class Trans:
         self.lockoutend()
 
     def check_idle(self):
-        #self.cmd = Commands.IDLE.value
+        self.cmd = Commands.IDLE.value
         self.lockoutstart()
         self.log("Sending IDLE command",tag="info")
         self.printout()
         self.lockoutend()
         
     def printout(self, arg = b''):
-        pass
-        # assert self.cmd != Commands.DEFAULT.value, "Invalid command"
-        # num_bytes, payload = 0, b''
-        # if type(arg) is int:
-        #     num_bytes, payload = self.byte_w_len(arg)
+        #pass
+        assert self.cmd != Commands.DEFAULT.value, "Invalid command"
+        num_bytes, payload = 0, b''
+        if type(arg) is int:
+            num_bytes, payload = self.byte_w_len(arg)
 
-        # self.rfm95.send(payload, seq=self.seq, ack=0, CMD=self.cmd, length=num_bytes)
-        # self.seq = (self.seq+1)%256
-        # response = self.rfm95.receive(timeout=self.RFMtimeout)
+        self.rfm95.send(payload, seq=self.seq, ack=0, CMD=self.cmd, length=num_bytes)
+        self.seq = (self.seq+1)%256
+        response = self.rfm95.receive(timeout=self.RFMtimeout)
 
-        # if response:
-        #     seq, ack, cmd, length, data = self.rfm95.extractHeaders(response)
-        #     if cmd == Commands.BUSY.value:
-        #         self.log("Motor is busy\n")
-        #         self.flash_screen("yellow")
-        #     else:
-        #         self.flash_screen()
-        #     self.result_label.config(text= f"ACK received", fg='green')
-        #     self.log(f"Recieved Headers: {seq} {ack} {cmd} {length}")
-        #     self.log(f"Data: {data}")
-        #     self.log(f"\tSignal Strength: {self.rfm95.last_rssi}")
-        #     self.log(f"\tSNR: {self.rfm95.last_snr}")
+        if response:
+            seq, ack, cmd, length, data = self.rfm95.extractHeaders(response)
+            if cmd == Commands.BUSY.value:
+                self.log("Motor is busy\n")
+                self.flash_screen("yellow")
+            else:
+                self.flash_screen()
+            self.result_label.config(text= f"ACK received", fg='green')
+            self.log(f"Recieved Headers: {seq} {ack} {cmd} {length}")
+            self.log(f"Data: {data}")
+            self.log(f"\tSignal Strength: {self.rfm95.last_rssi}")
+            self.log(f"\tSNR: {self.rfm95.last_snr}")
 
-        # else:
-        #     self.result_label.config(text= f"Timeout Waiting", fg='red')
-        #     self.log("Timeout waiting for ACK", tag="error")
+        else:
+            self.result_label.config(text= f"Timeout Waiting", fg='red')
+            self.log("Timeout waiting for ACK", tag="error")
 
     #---------------------------------------HELPERS-----------------------------------------#   
     def ask(self, purpose, message):
