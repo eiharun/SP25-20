@@ -33,3 +33,30 @@
 2025-04-20 20:42:14,751:DEBUG:tui.tui:do_close:	Signal Strength: -75
 2025-04-20 20:42:14,752:DEBUG:tui.tui:do_close:	SNR: 5.0
 2025-04-20 20:44:26,172:INFO:tui.tui:run:Exiting Ground Station TUI
+2025-04-21 19:21:48,736:INFO:__main__:<module>:--------------------------Starting Program----------------------------
+2025-04-21 19:21:48,737:INFO:__main__:<module>:Starting TUI
+2025-04-21 19:21:48,908:INFO:tui.tui:__init__:RFM95 Constructed
+2025-04-21 19:21:48,909:INFO:tui.tui:run:Starting TUI
+2025-04-21 19:21:51,327:DEBUG:rfm95api.rfm95:send:Sent packet with headers: (0, 0, 64, 1)
+2025-04-21 19:21:51,328:DEBUG:rfm95api.rfm95:send:And Payload bytearray(b'\x00\x00@\x01\x05')
+2025-04-21 19:21:51,333:DEBUG:tui.tui:do_open:Verification: 5:b'\x05':1:5
+2025-04-21 19:21:51,334:DEBUG:tui.tui:do_open:Payload Verification: 5:b'\x05':1:5
+2025-04-21 19:21:51,334:DEBUG:tui.tui:do_open:Sent Headers: 0 0 64 1: b'\x05'
+2025-04-21 19:21:51,335:INFO:tui.tui:do_open:Opening vent for 5 seconds
+2025-04-21 19:21:52,220:DEBUG:rfm95api.rfm95:receive:Received packet bytearray(b'\x00\x01@\x00')
+2025-04-21 19:21:52,221:DEBUG:rfm95api.rfm95:receive:With headers (0, 1, 64, 0, None)
+2025-04-21 19:21:52,221:DEBUG:tui.tui:do_open:Recieved Headers: 0 1 64 0 None
+2025-04-21 19:21:52,222:DEBUG:tui.tui:do_open:	Signal Strength: -72
+2025-04-21 19:21:52,222:DEBUG:tui.tui:do_open:	SNR: 4.5
+2025-04-21 19:26:47,358:DEBUG:rfm95api.rfm95:send:Sent packet with headers: (1, 0, 64, 1)
+2025-04-21 19:26:47,359:DEBUG:rfm95api.rfm95:send:And Payload bytearray(b'\x01\x00@\x01\x05')
+2025-04-21 19:26:47,360:DEBUG:tui.tui:do_open:Verification: 5:b'\x05':1:5
+2025-04-21 19:26:47,360:DEBUG:tui.tui:do_open:Payload Verification: 5:b'\x05':1:5
+2025-04-21 19:26:47,361:DEBUG:tui.tui:do_open:Sent Headers: 1 0 64 1: b'\x05'
+2025-04-21 19:26:47,361:INFO:tui.tui:do_open:Opening vent for 5 seconds
+2025-04-21 19:26:48,250:DEBUG:rfm95api.rfm95:receive:Received packet bytearray(b'\x00\x02@\x00')
+2025-04-21 19:26:48,251:DEBUG:rfm95api.rfm95:receive:With headers (0, 2, 64, 0, None)
+2025-04-21 19:26:48,252:DEBUG:tui.tui:do_open:Recieved Headers: 0 2 64 0 None
+2025-04-21 19:26:48,252:DEBUG:tui.tui:do_open:	Signal Strength: -73
+2025-04-21 19:26:48,252:DEBUG:tui.tui:do_open:	SNR: 5.0
+2025-04-21 19:31:42,895:INFO:tui.tui:run:Exiting Ground Station TUI
