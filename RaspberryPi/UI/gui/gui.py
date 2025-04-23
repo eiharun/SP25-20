@@ -35,16 +35,16 @@ class Trans:
         self.RFMtimeout = 5
 
         # cutdown, idle, close, and entry
-        self.cutdown_button = tk.Button(root, text="Cutdown", width=9, height=4, bg='red', font=("Arial", 15), command=self.check_cutdown)
+        self.cutdown_button = tk.Button(root, text="Cutdown", width=8, height=3, bg='red', font=("Arial", 14), command=self.check_cutdown)
         self.cutdown_button.grid(row=1, column=3, padx=5, pady=5)
 
-        self.idle_button = tk.Button(root, text="Idle", width=9, height=4, font=("Arial", 15), command=self.check_idle)
+        self.idle_button = tk.Button(root, text="Idle", width=8, height=3, font=("Arial", 14), command=self.check_idle)
         self.idle_button.grid(row=2, column=3, padx=5, pady=5)
 
-        self.close_button = tk.Button(root, text="Close", width=9, height=4, font=("Arial", 15), command=self.check_close)
+        self.close_button = tk.Button(root, text="Close", width=8, height=3, font=("Arial", 14), command=self.check_close)
         self.close_button.grid(row=3, column=3, padx=5, pady=5)
 
-        self.set_button = tk.Button(root, text="Set Timeout", width=11, height=5, font=("Arial", 13), command=self.set_timeout)
+        self.set_button = tk.Button(root, text="Set Timeout", width=10, height=4, font=("Arial", 12), command=self.set_timeout)
         self.set_button.grid(row=4, column=3, padx=5, pady=5)
 
         self.entry = tk.Entry(root, width=40, font=("Arial", 15), justify="center")
@@ -61,10 +61,10 @@ class Trans:
         self.create_buttons()
 
         # create label
-        self.result_label = tk.Label(root, text="", font=("Arial", 15))
+        self.result_label = tk.Label(root, text="", font=("Arial", 14))
         self.result_label.grid(row=5, column=0, columnspan=4, pady=10)
 
-        self.log_box = scrolledtext.ScrolledText(root, width=40, height=25, font=("Courier", 15), state='disabled', wrap='word')
+        self.log_box = scrolledtext.ScrolledText(root, width=40, height=20, font=("Courier", 14), state='disabled', wrap='word')
         self.log_box.grid(row=0, column=5, rowspan=6, padx=10, pady=10)
 
         self.setup_log_tags()
@@ -79,7 +79,7 @@ class Trans:
             elif button == "Open":
                 cmd = self.check_send
 
-            tk.Button(self.root, text=button, width=9, height=4, font=("Arial", 15), command=cmd).grid(
+            tk.Button(self.root, text=button, width=8, height=3, font=("Arial", 14), command=cmd).grid(
                 row=row_val, column=col_val, padx=5, pady=5
             )
 
@@ -96,7 +96,6 @@ class Trans:
     def clear_entry(self):
         self.result_label.config(text= f"Cleared", fg="green")
         self.entry.delete(0, tk.END)
-        self.log("Entry cleared")
 
     #---------------------------------------------COMMANDS------------------------------------------------------#
     def check_send(self):
@@ -140,7 +139,7 @@ class Trans:
         self.lockoutend()
 
     def check_close(self):
-        self.cmd = Commands.CLOSE.value
+       # self.cmd = Commands.CLOSE.value
         self.lockoutstart()
         if self.ask(purpose="Confirmation", message ="Are you sure you want to close the vent?" ) == "OK":
             self.log("Sending CLOSE command",tag='info')
@@ -199,14 +198,14 @@ class Trans:
             text = "Choose time unit:"
             left_text = "seconds"
             right_text = "minutes"
-            label = tk.Label(popup, text=text ,font=("Arial", 15))
+            label = tk.Label(popup, text=text ,font=("Arial", 14))
             
         elif purpose == "Confirmation":
             title = purpose
             text = message
             left_text = "Cancel"
             right_text = "OK"
-            label = tk.Label(popup, text=text ,font=("Arial", 15))
+            label = tk.Label(popup, text=text ,font=("Arial", 14))
 
         # Create popup window
         
@@ -214,9 +213,9 @@ class Trans:
         popup.geometry("600x200")
         popup.resizable(False, False)
         label.pack(pady=10)
-        btn_seconds = tk.Button(popup, text=left_text, width=10,font=("Arial", 15), command=lambda: choose(left_text))
+        btn_seconds = tk.Button(popup, text=left_text, width=10,font=("Arial", 14), command=lambda: choose(left_text))
         btn_seconds.pack(side="left", padx=20, pady=10)
-        btn_minutes = tk.Button(popup, text=right_text, width=10,font=("Arial", 15), command=lambda: choose(right_text))
+        btn_minutes = tk.Button(popup, text=right_text, width=10,font=("Arial", 14), command=lambda: choose(right_text))
         btn_minutes.pack(side="right", padx=20, pady=10)
 
         popup.wait_window() 
@@ -287,5 +286,5 @@ if __name__ == "__main__":
     trans = Trans(root)
     root.title("Balloon Control Interface")
    
-    root.geometry("1024x600+0+0")
+    root.geometry("1004x540+0+0")
     root.mainloop()
