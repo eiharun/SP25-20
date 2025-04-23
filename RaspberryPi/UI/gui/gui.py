@@ -15,7 +15,7 @@ class GUI:
         
     def run(self):
         try:
-            self.root.geometry("1024x600+0+0")
+            root.geometry("1004x540+0+0")
             self.root.mainloop()
         except KeyboardInterrupt:
             print()
