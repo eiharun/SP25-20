@@ -68,6 +68,7 @@ bool MotorBusy;
 bool writeLog(char* type, recv_t recv_pkt);
 #endif
 void interpret_command(uint8_t* recv_buf);
-void execute_command_0(uint8_t cmd);
-void execute_command_1(uint8_t cmd, uint64_t num);
+//void execute_command_0(uint8_t cmd);
+//void execute_command_1(uint8_t cmd, uint64_t num);
+void execute_command(uint8_t cmd, uint64_t num = 0)
 
