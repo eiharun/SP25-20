@@ -1,6 +1,7 @@
 import tkinter as tk
 from tkinter import messagebox
 from tkinter import scrolledtext
+import time
 
 from UI.rfm95api import *
 import logging
@@ -10,11 +11,11 @@ logger = logging.getLogger(__name__)
 class GUI:
     def __init__(self):
         self.root = tk.Tk()
-        trans = Trans(self.root)
-        self.root.title("Balloon Control Interface")
+        Trans(self.root)
         
     def run(self):
         try:
+            self.root.title("Balloon Control Interface")
             self.root.geometry("1004x540+0+0")
             self.root.mainloop()
         except KeyboardInterrupt:
@@ -99,21 +100,30 @@ class Trans:
 
     #---------------------------------------------COMMANDS------------------------------------------------------#
     def check_send(self):
-        time_val = self.entry.get()
         # check if there is a valid entry
-        if not time_val.isdigit():
+        self.cmd = Commands.OPEN.value
+        try:
+            time_val = int(self.entry.get())
+        except ValueError:
             self.result_label.config(text="Please enter a valid number", fg="red")
             self.log("Invalid entry: not a number", tag="error")
             return
-        time_val = int(time_val)
+        
         self.entry.delete(0, tk.END)
         time_unit = self.ask(purpose="TimeUnit", message=None)
-        if time_unit == "":
+        if time_unit not in ["minutes", "seconds"]:
+            self.result_label.config(text="Invalid time unit selected", fg="red")
+            self.log("Invalid time unit", tag="error")
             return
         
         pTime = time_val
         time_val = time_val*60 if time_unit == "minutes" else time_val
-        self.cmd = Commands.OPEN.value
+
+        if time_val <= 0 or time_val > 3600:  # 1 hour max?
+            self.result_label.config(text="Enter a time between a second and a hour", fg="red")
+            self.log("Time out of range", tag="error")
+            return
+        
         
         # confirmation
         self.lockoutstart()
@@ -139,7 +149,7 @@ class Trans:
         self.lockoutend()
 
     def check_close(self):
-       # self.cmd = Commands.CLOSE.value
+        self.cmd = Commands.CLOSE.value
         self.lockoutstart()
         if self.ask(purpose="Confirmation", message ="Are you sure you want to close the vent?" ) == "OK":
             self.log("Sending CLOSE command",tag='info')
@@ -160,29 +170,42 @@ class Trans:
         #pass
         assert self.cmd != Commands.DEFAULT.value, "Invalid command"
         num_bytes, payload = 0, b''
-        if type(arg) is int:
+        if isinstance(arg, int):
             num_bytes, payload = self.byte_w_len(arg)
+
 
         self.rfm95.send(payload, seq=self.seq, ack=0, CMD=self.cmd, length=num_bytes)
         self.seq = (self.seq+1)%256
-        response = self.rfm95.receive(timeout=self.RFMtimeout)
 
-        if response:
-            seq, ack, cmd, length, data = self.rfm95.extractHeaders(response)
-            if cmd == Commands.BUSY.value:
-                self.log("Motor is busy\n")
-                self.flash_screen("yellow")
-            else:
-                self.flash_screen()
-            self.result_label.config(text= f"ACK received", fg='green')
-            self.log(f"Recieved Headers: {seq} {ack} {cmd} {length}")
-            self.log(f"Data: {data}")
-            self.log(f"\tSignal Strength: {self.rfm95.last_rssi}")
-            self.log(f"\tSNR: {self.rfm95.last_snr}")
-
-        else:
-            self.result_label.config(text= f"Timeout Waiting", fg='red')
-            self.log("Timeout waiting for ACK", tag="error")
+        start_time = time.monotonic()
+        valid_ack_received = False
+        while (time.monotonic() - start_time) < self.RFMtimeout:
+            response = self.rfm95.receive(timeout=self.RFMtimeout)
+            if response:
+                try:
+                    seq, ack, cmd, length, data = self.rfm95.extractHeaders(response)
+                except Exception as e:
+                    self.log(f"Header extraction failed: {e}", tag="error")
+                    continue
+                
+                if ack == 101:
+                    valid_ack_received = True
+                    if cmd == Commands.BUSY.value:
+                        self.log("Motor is busy\n")
+                        self.flash_screen("yellow")
+                    else:
+                        self.flash_screen()
+                    self.result_label.config(text= f"ACK received", fg='green')
+                    self.log(f"Recieved Headers: {seq} {ack} {cmd} {length}")
+                    self.log(f"Data: {data}")
+                    self.log(f"\tSignal Strength: {self.rfm95.last_rssi}")
+                    self.log(f"\tSNR: {self.rfm95.last_snr}")
+                    break
+                else:
+                    self.log(f"Ignored ACK: {ack}, waiting for 101 ACK", tag="warning")
+        if not valid_ack_received:
+            self.result_label.config(text="Timeout Waiting", fg='red')
+            self.log("Timeout waiting for valid ACK", tag="error")
 
     #---------------------------------------HELPERS-----------------------------------------#   
     def ask(self, purpose, message):
@@ -199,13 +222,16 @@ class Trans:
             left_text = "seconds"
             right_text = "minutes"
             label = tk.Label(popup, text=text ,font=("Arial", 14))
-            
         elif purpose == "Confirmation":
             title = purpose
             text = message
             left_text = "Cancel"
             right_text = "OK"
             label = tk.Label(popup, text=text ,font=("Arial", 14))
+        else:
+            self.log(f"Unknown purpose: {purpose}", tag="error")
+            popup.destroy()
+            return ""
 
         # Create popup window
         
@@ -213,6 +239,7 @@ class Trans:
         popup.geometry("600x200")
         popup.resizable(False, False)
         label.pack(pady=10)
+
         btn_seconds = tk.Button(popup, text=left_text, width=10,font=("Arial", 14), command=lambda: choose(left_text))
         btn_seconds.pack(side="left", padx=20, pady=10)
         btn_minutes = tk.Button(popup, text=right_text, width=10,font=("Arial", 14), command=lambda: choose(right_text))
@@ -258,14 +285,16 @@ class Trans:
 
     def set_timeout(self):
         time_val = self.entry.get()
-        if not time_val.isdigit():
+        try:
+            time_val = int(self.entry.get())
+        except ValueError:
             self.result_label.config(text="Please enter a valid number", fg="red")
             self.log("Invalid entry: not a number", tag="error")
             return
-        time_val = int(time_val)
-        if time_val > 30 or time_val < 0:
+    
+        if time_val > 30 or time_val < 1:
             self.result_label.config(text="Please enter a valid number", fg="red")
-            self.log("Timeout can only be between 0 and 30 seconds", tag="error")
+            self.log("Timeout can only be between 1 and 30 seconds", tag="error")
             return
         self.entry.delete(0, tk.END)
         
