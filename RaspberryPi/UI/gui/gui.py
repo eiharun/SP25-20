@@ -175,7 +175,7 @@ class Trans:
 
 
         self.rfm95.send(payload, seq=self.seq, ack=0, CMD=self.cmd, length=num_bytes)
-        self.seq = (self.seq+1)%256
+        
 
         start_time = time.monotonic()
         valid_ack_received = False
@@ -188,9 +188,10 @@ class Trans:
                     self.log(f"Header extraction failed: {e}", tag="error")
                     continue
                 
-                if ack == 101:
+                if ack == self.seq:
+                    self.seq = (self.seq+1)%256
                     valid_ack_received = True
-                    if cmd == Commands.BUSY.value:
+                    if cmd == Commands.BUSY.value and (self.cmd == Commands.OPEN.value or Commmands.IDLE.value):
                         self.log("Motor is busy\n")
                         self.flash_screen("yellow")
                     else:
