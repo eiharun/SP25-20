@@ -1,4 +1,4 @@
-// #define LOGGING //COMMENT TO DISABLE LOGGING AND DEPENDENCIES (if you don't have GPS or SD card connected)
+#define LOGGING //COMMENT TO DISABLE LOGGING AND DEPENDENCIES (if you don't have GPS or SD card connected)
 
 #include "Balloon.h"
 
@@ -140,12 +140,13 @@ void loop() {
        */
       Serial.println("RECV STATE");
       /* Do something with recv_buf */
-      uint8_t seq = rf95.headerSeq()
+      uint8_t seq = rf95.headerSeq();
       //uint8_t ack = rf95.headerSeq() + 1;
       uint8_t cmd = rf95.headerCMD();
       uint8_t len = rf95.headerLen();
       Serial.print("Got Seq:");
-      Serial.println(ack-1);
+      Serial.println(seq);
+      // Serial.println(ack-1);
       Serial.print("Got cmd:");
       Serial.println(cmd);
       digitalWrite(RX_LED, HIGH);
@@ -160,23 +161,27 @@ void loop() {
         expected_seq = 0;
       /* Send ACK */
       //send back with ack = seq anyways
-      rf95.setHeaders(seq, seq, cmd, 0);
-      rf95.send(NULL, 0);
       if(expected_seq == seq){
         //if the motor is busy and the cmd is not (cutdown or close)
         if(MotorBusy && cmd != 3 && cmd != 2){
           Serial.println("Sent ack-BUSY");
+          cmd = BUSY;
         }
         else{
           Serial.println("Sent ack");
           interpret_command(recv_buf);
         }
         expected_seq=(expected_seq+1)%256;
+        if(expected_seq==0){
+          expected_seq=1;
+        } 
       }
       //do nothing
       else{
         Serial.println("Sent Ack, Duplicated packet");
       }
+      rf95.setHeaders(seq, seq, cmd, 0);
+      rf95.send(NULL, 0);
 
       // if (MotorBusy && cmd!=3 && cmd!=2){
       //   rf95.setHeaders(seq, ack, 255, 0);
@@ -234,30 +239,11 @@ bool writeLog(char* type, recv_t recv_pkt) {
 void interpret_command(uint8_t* recv_buf){
   uint8_t cmd = rf95.headerCMD();
   uint8_t length = rf95.headerLen();
-  // if (cmd>0 && cmd<=11){
-  //   Serial.print("No payload data: ");
-  //   execute_command_0(cmd);
-  // }
-  // else if (cmd>11 && cmd<=193){
-  //   uint8_t offset=0;
-  //   if (length > 8){
-  //     Serial.print("Truncating");
-  //     Serial.println(length);
-  //     offset = length-8;
-  //     length = 8; //Cap length to 8
-  //     /* Only read lower 8 bytes */
-  //   }
-  //   Serial.println("Binary Encoded data: ");
-  //   uint64_t decimal=0;
-  //   /* Decodes big endian decimal */
-  //   for (size_t i = offset; i < length;i++){
-  //     decimal = (decimal<<8) | recv_buf[i];
-  //   }
-  //   //Execute
-  //   execute_command_1(cmd, decimal);
-  // }
-  // else if (cmd range){ decode and do something } // Use to expand the command set
-  if(cmd>0 && cmd<=193){
+  if (cmd>0 && cmd<=11){
+    Serial.print("No payload data: ");
+    execute_command_0(cmd);
+  }
+  else if (cmd>11 && cmd<=193){
     uint8_t offset=0;
     if (length > 8){
       Serial.print("Truncating");
@@ -273,12 +259,35 @@ void interpret_command(uint8_t* recv_buf){
       decimal = (decimal<<8) | recv_buf[i];
     }
     //Execute
-    execute_command(cmd, decimal);
+    execute_command_1(cmd, decimal);
   }
+  //else if (cmd range){  decode and do something } // Use to expand the command set
   else{
     Serial.print("Undefined Command Range");
     Serial.println(cmd);
   }
+  // if(cmd>0 && cmd<=193){
+  //   uint8_t offset=0;
+  //   if (length > 8){
+  //     Serial.print("Truncating");
+  //     Serial.println(length);
+  //     offset = length-8;
+  //     length = 8; //Cap length to 8
+  //     /* Only read lower 8 bytes */
+  //   }
+  //   Serial.println("Binary Encoded data: ");
+  //   uint64_t decimal=0;
+  //   /* Decodes big endian decimal */
+  //   for (size_t i = offset; i < length;i++){
+  //     decimal = (decimal<<8) | recv_buf[i];
+  //   }
+  //   //Execute
+  //   execute_command(cmd, decimal);
+  // }
+  // else{
+  //   Serial.print("Undefined Command Range");
+  //   Serial.println(cmd);
+  // }
 }
 
 void resetMotor(){
@@ -289,31 +298,31 @@ void resetMotor(){
   motorTimer->setCount(0);
 }
 
-// void execute_command_0(uint8_t cmd){
-//   switch(cmd){
-//     case cIDLE: {
-//       Serial.println("Idle, do nothing");
-//       break;
-//     }
-//     case CUTDOWN: {
-//       Serial.println("Cutdown");
-//       break;
-//     }
-//     case CLOSE: {
-//       if(MotorBusy){
-//         resetMotor();
-//       }
-//       break;
-//     }
-//     default: {
-//       Serial.print("Unknown command");
-//       Serial.println(cmd);
-//       break;
-//     }
-//   }
-// }
-// was _1
-void execute_command(uint8_t cmd, uint64_t num = 0){
+void execute_command_0(uint8_t cmd){
+  switch(cmd){
+    case cIDLE: {
+      Serial.println("Idle, do nothing");
+      break;
+    }
+    case CUTDOWN: {
+      Serial.println("Cutdown");
+      break;
+    }
+    case CLOSE: {
+      if(MotorBusy){
+        resetMotor();
+      }
+      break;
+    }
+    default: {
+      Serial.print("Unknown command");
+      Serial.println(cmd);
+      break;
+    }
+  }
+}
+
+void execute_command_1(uint8_t cmd, uint64_t num){
   switch(cmd){
     case cIDLE: {
       Serial.println("Idle, do nothing");
