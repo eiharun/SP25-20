@@ -190,8 +190,10 @@ class Trans:
                 
                 if ack == self.seq:
                     self.seq = (self.seq+1)%256
+                    if self.seq == 0:
+                        self.seq = 1
                     valid_ack_received = True
-                    if cmd == Commands.BUSY.value and (self.cmd == Commands.OPEN.value or Commmands.IDLE.value):
+                    if cmd == Commands.BUSY.value:
                         self.log("Motor is busy\n")
                         self.flash_screen("yellow")
                     else:
@@ -203,7 +205,7 @@ class Trans:
                     self.log(f"\tSNR: {self.rfm95.last_snr}")
                     break
                 else:
-                    self.log(f"Ignored ACK: {ack}, waiting for 101 ACK", tag="warning")
+                    self.log(f"Ignored ACK: {ack}, waiting for {self.seq} ACK", tag="warning")
         if not valid_ack_received:
             self.result_label.config(text="Timeout Waiting", fg='red')
             self.log("Timeout waiting for valid ACK", tag="error")

@@ -443,11 +443,12 @@ class TUICommand(cmd.Cmd):
                     if cmd == Commands.BUSY.value:
                         print("Balloon is busy. Motor is open. Send close command to close it")
                         logger.info("Balloon is busy. Motor is open. Send close command to close it")
+                    else:
+                        print(f"Received ACKNOWLEDGEMENT!: Took {time.monotonic()-start_time:0.2f} seconds")
                     logger.debug(f"received Headers: {seq} {ack} {cmd} {length} {data}")
                     logger.debug(f"\tSignal Strength: {self.rfm95.last_rssi}")
                     logger.debug(f"\tSNR: {self.rfm95.last_snr}")
                     logger.debug(f"\tRTT: {time.monotonic()-start_time:0.6} seconds")
-                    print(f"Received ACKNOWLEDGEMENT!: Took {time.monotonic()-start_time:0.2f} seconds")
                     break
                 else:
                     logger.info(f"Ignored ACK: {ack}, waiting for {self.seq} ACK")
