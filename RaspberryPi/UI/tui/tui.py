@@ -79,45 +79,45 @@ class TUICommand(cmd.Cmd):
             duration = duration * 60 # Instead of having an OPENm command, we convert minutes to seconds as 4 bytes is enough to represent 50k days
         assert duration < 2**(4*8), "Duration is too long. Max duration is 2^32-1 seconds [4 bytes]"
         num_bytes, payload = self.byte_w_len(duration)
+        self.send_n_recieve(payload, num_bytes)
+        # self.rfm95.send(payload, seq=self.seq, ack=0, CMD=self.cmd, length=num_bytes)
         
-        self.rfm95.send(payload, seq=self.seq, ack=0, CMD=self.cmd, length=num_bytes)
-        
-        logger.debug(f"Verification: {duration}:{payload}:{num_bytes}:{int.from_bytes(payload,'big')}")
-        logger.debug(f"Payload Verification: {duration}:{payload}:{num_bytes}:{int.from_bytes(payload,'big')}")
-        print(f"Opening vent for {duration} {'seconds' if unit == 's' else 'minutes'}")
-        logger.debug(f"Sent Headers: {self.seq} 0 {self.cmd} {num_bytes}: {payload}")
-        logger.info(f"Opening vent for {duration} {'seconds' if unit == 's' else 'minutes'}")
+        # logger.debug(f"Verification: {duration}:{payload}:{num_bytes}:{int.from_bytes(payload,'big')}")
+        # logger.debug(f"Payload Verification: {duration}:{payload}:{num_bytes}:{int.from_bytes(payload,'big')}")
+        # print(f"Opening vent for {duration} {'seconds' if unit == 's' else 'minutes'}")
+        # logger.debug(f"Sent Headers: {self.seq} 0 {self.cmd} {num_bytes}: {payload}")
+        # logger.info(f"Opening vent for {duration} {'seconds' if unit == 's' else 'minutes'}")
 
-        # self.seq = (self.seq+1)%256
-        #recv = self.rfm95.receive(timeout=self.RFMtimeout)
+        # # self.seq = (self.seq+1)%256
+        # #recv = self.rfm95.receive(timeout=self.RFMtimeout)
         
-        start_time = time.monotonic()
-        valid_ack_received = False
-        response = self.rfm95.receive(timeout=self.RFMtimeout)
-        if response:
-            try:
-                seq, ack, cmd, length, data = self.rfm95.extractHeaders(response)
-            except Exception as e:
-                logger.info(f"Header extraction failed: {e}")
+        # start_time = time.monotonic()
+        # valid_ack_received = False
+        # response = self.rfm95.receive(timeout=self.RFMtimeout)
+        # if response:
+        #     try:
+        #         seq, ack, cmd, length, data = self.rfm95.extractHeaders(response)
+        #     except Exception as e:
+        #         logger.info(f"Header extraction failed: {e}")
             
-            # if ack == 101:
-            if ack == self.seq:
-                self.seq = (self.seq+1)%256
-                if self.seq == 0:
-                    self.seq = 1
-                valid_ack_received = True
-                if cmd == Commands.BUSY.value:
-                    print("Balloon is busy. Motor is open. Send close command to close it")
-                    logger.info("Balloon is busy. Motor is open. Send close command to close it")
-                logger.debug(f"received Headers: {seq} {ack} {cmd} {length} {data}")
-                logger.debug(f"\tSignal Strength: {self.rfm95.last_rssi}")
-                logger.debug(f"\tSNR: {self.rfm95.last_snr}")
-                print("Received ACKNOWLEDGEMENT!")
-            else:
-                logger.info(f"Ignored ACK: {ack}, waiting for {self.seq} ACK")
-        if not valid_ack_received:
-            print("No Valid Ack received. Verify gps data before resending")
-            logger.debug("No Ack received. Verify gps data before resending")
+        #     # if ack == 101:
+        #     if ack == self.seq:
+        #         self.seq = (self.seq+1)%256
+        #         if self.seq == 0:
+        #             self.seq = 1
+        #         valid_ack_received = True
+        #         if cmd == Commands.BUSY.value:
+        #             print("Balloon is busy. Motor is open. Send close command to close it")
+        #             logger.info("Balloon is busy. Motor is open. Send close command to close it")
+        #         logger.debug(f"received Headers: {seq} {ack} {cmd} {length} {data}")
+        #         logger.debug(f"\tSignal Strength: {self.rfm95.last_rssi}")
+        #         logger.debug(f"\tSNR: {self.rfm95.last_snr}")
+        #         print("Received ACKNOWLEDGEMENT!")
+        #     else:
+        #         logger.info(f"Ignored ACK: {ack}, waiting for {self.seq} ACK")
+        # if not valid_ack_received:
+        #     print("No Valid Ack received. Verify gps data before resending")
+        #     logger.debug("No Ack received. Verify gps data before resending")
             
             # remove once tested
         # if recv is None:
@@ -140,33 +140,36 @@ class TUICommand(cmd.Cmd):
         answer = input("Are you sure you want to cutdown the balloon? y/n:")
         if answer.lower() == 'y':
             print("Sending cutdown command")
-            self.rfm95.send(b'\x00', seq=self.seq, ack=0, CMD=Commands.CUTDOWN.value, length=0)
-            logger.debug(f"Sent Headers: {self.seq} 0 {self.cmd} 0")
-            # self.seq = (self.seq+1)%256
+            self.cmd = Commands.CUTDOWN.value
+            self.send_n_recieve(b'', 0)
+            
+            # self.rfm95.send(b'\x00', seq=self.seq, ack=0, CMD=Commands.CUTDOWN.value, length=0)
+            # logger.debug(f"Sent Headers: {self.seq} 0 {self.cmd} 0")
+            # # self.seq = (self.seq+1)%256
 
-            start_time = time.monotonic()
-            valid_ack_received = False
-            response = self.rfm95.receive(timeout=self.RFMtimeout)
-            if response:
-                try:
-                    seq, ack, cmd, length, data = self.rfm95.extractHeaders(response)
-                except Exception as e:
-                    logger.info(f"Header extraction failed: {e}")
+            # start_time = time.monotonic()
+            # valid_ack_received = False
+            # response = self.rfm95.receive(timeout=self.RFMtimeout)
+            # if response:
+            #     try:
+            #         seq, ack, cmd, length, data = self.rfm95.extractHeaders(response)
+            #     except Exception as e:
+            #         logger.info(f"Header extraction failed: {e}")
                 
-                if ack == self.seq:
-                    self.seq = (self.seq+1)%256
-                    if self.seq == 0:
-                        self.seq = 1
-                    valid_ack_received = True
-                    logger.debug(f"Recieved Headers: {seq} {ack} {cmd} {length} {data}")
-                    logger.debug(f"\tSignal Strength: {self.rfm95.last_rssi}")
-                    logger.debug(f"\tSNR: {self.rfm95.last_snr}")
-                    print("Received ACKNOWLEDGEMENT!")
-                else:
-                    logger.info(f"Ignored ACK: {ack}, waiting for 101 ACK")
-            if not valid_ack_received:
-                print("No Ack recieved. Verify gps data before resending")
-                logger.info("No Ack recieved. Verify gps data before resending")
+            #     if ack == self.seq:
+            #         self.seq = (self.seq+1)%256
+            #         if self.seq == 0:
+            #             self.seq = 1
+            #         valid_ack_received = True
+            #         logger.debug(f"Recieved Headers: {seq} {ack} {cmd} {length} {data}")
+            #         logger.debug(f"\tSignal Strength: {self.rfm95.last_rssi}")
+            #         logger.debug(f"\tSNR: {self.rfm95.last_snr}")
+            #         print("Received ACKNOWLEDGEMENT!")
+            #     else:
+            #         logger.info(f"Ignored ACK: {ack}, waiting for 101 ACK")
+            # if not valid_ack_received:
+            #     print("No Ack recieved. Verify gps data before resending")
+            #     logger.info("No Ack recieved. Verify gps data before resending")
 
             # recv = self.rfm95.receive(timeout=self.RFMtimeout)
             # if recv is None:
@@ -188,38 +191,41 @@ class TUICommand(cmd.Cmd):
         Usage: IDLE"""
         assert len(arg) == 0, "idle takes no arguments"
         print("Sending idle command")
-        start_time = time.monotonic()
-        self.rfm95.send(b'', seq=self.seq, ack=0, CMD=Commands.IDLE.value, length=0)
-        logger.debug(f"Sent Headers: {self.seq} 0 {self.cmd} 0")
-        # self.seq = (self.seq+1)%256
+        self.cmd = Commands.IDLE.value
+        self.send_n_recieve(b'', 0)
+        
+        # start_time = time.monotonic()
+        # self.rfm95.send(b'', seq=self.seq, ack=0, CMD=Commands.IDLE.value, length=0)
+        # logger.debug(f"Sent Headers: {self.seq} 0 {self.cmd} 0")
+        # # self.seq = (self.seq+1)%256
 
-        valid_ack_received = False
-        response = self.rfm95.receive(timeout=self.RFMtimeout)
-        if response:
-            try:
-                seq, ack, cmd, length, data = self.rfm95.extractHeaders(response)
-            except Exception as e:
-                logger.info(f"Header extraction failed: {e}")
+        # valid_ack_received = False
+        # response = self.rfm95.receive(timeout=self.RFMtimeout)
+        # if response:
+        #     try:
+        #         seq, ack, cmd, length, data = self.rfm95.extractHeaders(response)
+        #     except Exception as e:
+        #         logger.info(f"Header extraction failed: {e}")
             
-            if ack == self.seq:
-                self.seq = (self.seq+1)%256
-                if self.seq == 0:
-                    self.seq = 1
-                valid_ack_received = True
-                if cmd == Commands.BUSY.value:
-                    print("Balloon is busy. Motor is open. Send close command to close it")
-                    logger.info("Balloon is busy. Motor is open. Send close command to close it")
-                logger.debug(f"Recieved Headers: {seq} {ack} {cmd} {length} {data}")
-                logger.debug(f"\tSignal Strength: {self.rfm95.last_rssi}")
-                logger.debug(f"\tSNR: {self.rfm95.last_snr}")
-                end_time = time.monotonic()
-                logger.debug(f"\tRTT: {end_time-start_time:0.5f}s")
-                print(f"Received ACKNOWLEDGEMENT!: Took {end_time-start_time:0.2f} s")
-            else:
-                logger.info(f"Ignored ACK: {ack}, waiting for {self.seq} ACK")
-        if not valid_ack_received:
-            print("No Ack received")
-            logger.info("No Ack received")
+        #     if ack == self.seq:
+        #         self.seq = (self.seq+1)%256
+        #         if self.seq == 0:
+        #             self.seq = 1
+        #         valid_ack_received = True
+        #         if cmd == Commands.BUSY.value:
+        #             print("Balloon is busy. Motor is open. Send close command to close it")
+        #             logger.info("Balloon is busy. Motor is open. Send close command to close it")
+        #         logger.debug(f"Recieved Headers: {seq} {ack} {cmd} {length} {data}")
+        #         logger.debug(f"\tSignal Strength: {self.rfm95.last_rssi}")
+        #         logger.debug(f"\tSNR: {self.rfm95.last_snr}")
+        #         end_time = time.monotonic()
+        #         logger.debug(f"\tRTT: {end_time-start_time:0.5f}s")
+        #         print(f"Received ACKNOWLEDGEMENT!: Took {end_time-start_time:0.2f} s")
+        #     else:
+        #         logger.info(f"Ignored ACK: {ack}, waiting for {self.seq} ACK")
+        # if not valid_ack_received:
+        #     print("No Ack received")
+        #     logger.info("No Ack received")
 
         # recv = self.rfm95.receive(timeout=self.RFMtimeout)
         # if recv is None:
@@ -242,33 +248,36 @@ class TUICommand(cmd.Cmd):
         answer = input("Are you sure you want to close the balloon? y/n:")
         if answer.lower() == 'y':
             print("Sending close command")
-            self.rfm95.send(b'\x00', seq=self.seq, ack=0, CMD=Commands.CLOSE.value, length=0)
-            logger.debug(f"Sent Headers: {self.seq} 0 {self.cmd} 0")
-            # self.seq = (self.seq+1)%256
+            self.cmd=Commands.CLOSE.value
+            self.send_n_recieve(b'', 0)
+            
+            # self.rfm95.send(b'\x00', seq=self.seq, ack=0, CMD=Commands.CLOSE.value, length=0)
+            # logger.debug(f"Sent Headers: {self.seq} 0 {self.cmd} 0")
+            # # self.seq = (self.seq+1)%256
 
-            start_time = time.monotonic()
-            valid_ack_received = False
-            response = self.rfm95.receive(timeout=self.RFMtimeout)
-            if response:
-                try:
-                    seq, ack, cmd, length, data = self.rfm95.extractHeaders(response)
-                except Exception as e:
-                    logger.info(f"Header extraction failed: {e}")
+            # start_time = time.monotonic()
+            # valid_ack_received = False
+            # response = self.rfm95.receive(timeout=self.RFMtimeout)
+            # if response:
+            #     try:
+            #         seq, ack, cmd, length, data = self.rfm95.extractHeaders(response)
+            #     except Exception as e:
+            #         logger.info(f"Header extraction failed: {e}")
                 
-                if ack == self.seq:
-                    self.seq = (self.seq+1)%256
-                    if self.seq == 0:
-                        self.seq = 1
-                    valid_ack_received = True
-                    logger.debug(f"Recieved Headers: {seq} {ack} {cmd} {length} {data}")
-                    logger.debug(f"\tSignal Strength: {self.rfm95.last_rssi}")
-                    logger.debug(f"\tSNR: {self.rfm95.last_snr}")
-                    print("Received ACKNOWLEDGEMENT!")
-                else:
-                    logger.info(f"Ignored ACK: {ack}, waiting for 101 ACK")
-            if not valid_ack_received:
-                print("No Ack recieved. Verify gps data before resending")
-                logger.info("No Ack recieved. Verify gps data before resending")
+            #     if ack == self.seq:
+            #         self.seq = (self.seq+1)%256
+            #         if self.seq == 0:
+            #             self.seq = 1
+            #         valid_ack_received = True
+            #         logger.debug(f"Recieved Headers: {seq} {ack} {cmd} {length} {data}")
+            #         logger.debug(f"\tSignal Strength: {self.rfm95.last_rssi}")
+            #         logger.debug(f"\tSNR: {self.rfm95.last_snr}")
+            #         print("Received ACKNOWLEDGEMENT!")
+            #     else:
+            #         logger.info(f"Ignored ACK: {ack}, waiting for 101 ACK")
+            # if not valid_ack_received:
+            #     print("No Ack recieved. Verify gps data before resending")
+            #     logger.info("No Ack recieved. Verify gps data before resending")
 
             # recv = self.rfm95.receive(timeout=self.RFMtimeout)
             # if recv is None:
@@ -346,12 +355,20 @@ class TUICommand(cmd.Cmd):
     @handle_assertion
     def do_send_custom_packet(self, arg):
         args = arg.split(' ')
+        assert len(args) == 5 or len(args)==4, "Required 5 arguments: seq#, ack#, cmd, length, data"
+        assert args[0].isdigit() and args[1].isdigit() and args[2].isdigit() and args[3].isdigit()
         seq = int(args[0])
         ack = int(args[1])
         cmd = int(args[2])
         length = int(args[3])
-        data = int(args[4])
-        num_bytes, payload = self.byte_w_len(data)
+        try:
+            if args[4].isdigit():
+                data = int(args[4])
+                _, payload = self.byte_w_len(data)
+            else:
+                data.encode('utf-8')
+        except IndexError:
+            payload=b''
         self.rfm95.send(payload, seq=seq, ack=ack, CMD=cmd, length=length)
         response = self.rfm95.receive(timeout=self.RFMtimeout)
         if response:
@@ -402,3 +419,40 @@ class TUICommand(cmd.Cmd):
         assert isinstance(i, int), "Argument in byte_w_len() must be a string"
         num_bytes = (i.bit_length() + 7) // 8
         return num_bytes, i.to_bytes(num_bytes, byteorder='big')
+
+    def send_n_recieve(self, payload:bytes, length):
+        self.rfm95.send(payload, seq=self.seq, ack=0, CMD=self.cmd, length=length)
+        
+        # Recieve Loop
+        start_time = time.monotonic()
+        valid_ack_received = False
+        while (time.monotonic() - start_time) < self.RFMtimeout: #Listen for the correct packet
+            response = self.rfm95.receive(timeout=self.RFMtimeout)
+            if response:
+                try:
+                    seq, ack, cmd, length, data = self.rfm95.extractHeaders(response)
+                except Exception as e:
+                    logger.info(f"Header extraction failed: {e}")
+                    continue
+                
+                if ack == self.seq:
+                    self.seq = (self.seq+1)%256
+                    if self.seq == 0:
+                        self.seq = 1
+                    valid_ack_received = True
+                    if cmd == Commands.BUSY.value:
+                        print("Balloon is busy. Motor is open. Send close command to close it")
+                        logger.info("Balloon is busy. Motor is open. Send close command to close it")
+                    logger.debug(f"received Headers: {seq} {ack} {cmd} {length} {data}")
+                    logger.debug(f"\tSignal Strength: {self.rfm95.last_rssi}")
+                    logger.debug(f"\tSNR: {self.rfm95.last_snr}")
+                    logger.debug(f"\tRTT: {time.monotonic()-start_time:0.6} seconds")
+                    print(f"Received ACKNOWLEDGEMENT!: Took {time.monotonic()-start_time:0.2f} seconds")
+                    break
+                else:
+                    logger.info(f"Ignored ACK: {ack}, waiting for {self.seq} ACK")
+        if not valid_ack_received:
+            print("No Valid Ack received. Verify gps data")
+            logger.debug("No Ack received. Verify gps data")
+        self.cmd = Commands.DEFAULT.value # RESET
+        
