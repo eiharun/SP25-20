@@ -89,10 +89,9 @@ uint8_t recv_buf_len = RH_RF95_MAX_MESSAGE_LEN;
 
 /* ---------------------LOOP-------------------- */
 /* --------------------------------------------- */
-//int seq=0;
 int expected_seq=0;
+int seq = 0;
 void loop() {
-  unsigned long currentMillis = millis();
 #ifdef LOGGING
   /* Gather Data from GPS */
   Serial.println("");
@@ -140,12 +139,12 @@ void loop() {
        */
       Serial.println("RECV STATE");
       /* Do something with recv_buf */
-      uint8_t seq = rf95.headerSeq();
+      uint8_t got_seq = rf95.headerSeq();
       //uint8_t ack = rf95.headerSeq() + 1;
       uint8_t cmd = rf95.headerCMD();
       uint8_t len = rf95.headerLen();
       Serial.print("Got Seq:");
-      Serial.println(seq);
+      Serial.println(got_seq);
       // Serial.println(ack-1);
       Serial.print("Got cmd:");
       Serial.println(cmd);
@@ -157,11 +156,11 @@ void loop() {
       writeLog("RECV", recv_pkt);
 #endif
       //reset
-      if(seq == 0)
+      if(got_seq == 0)
         expected_seq = 0;
       /* Send ACK */
       //send back with ack = seq anyways
-      if(expected_seq == seq){
+      if(expected_seq == got_seq){
         //if the motor is busy and the cmd is not (cutdown or close)
         if(MotorBusy && cmd != 3 && cmd != 2){
           Serial.println("Sent ack-BUSY");
@@ -180,9 +179,12 @@ void loop() {
       else{
         Serial.println("Sent Ack, Duplicated packet");
       }
-      rf95.setHeaders(seq, seq, cmd, 0);
+      rf95.setHeaders(seq, got_seq, cmd, 0);
       rf95.send(NULL, 0);
-
+      seq=(seq+1)%256;
+      if(seq==0){
+        seq=1;
+      } 
       // if (MotorBusy && cmd!=3 && cmd!=2){
       //   rf95.setHeaders(seq, ack, 255, 0);
       //   seq=(seq+1)%256;
