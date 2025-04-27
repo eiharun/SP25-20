@@ -1,12 +1,15 @@
 #define LOGGING //COMMENT TO DISABLE LOGGING AND DEPENDENCIES (if you don't have GPS or SD card connected)
+#define LED //COMMENT TO DISABLE LEDS 
 
 #include "Balloon.h"
 
 void setup() {
   SystemClock_Config(); 
   pinMode(RFM95_RST, OUTPUT);
+  #ifdef LED
   pinMode(TX_LED, OUTPUT);
   pinMode(RX_LED, OUTPUT);
+  #endif
   digitalWrite(RFM95_RST, HIGH);
 
   /* Attach Servo Motor */
@@ -15,7 +18,7 @@ void setup() {
   Serial.print("Servo motor not connected");
   }
   Serial.print("Servo motor connected");
-  motor.write(0);/* Starting Angle */
+  motor.write(SERVO_ANGLE_CLOSED);/* Starting Angle */
 
   /* Start Serial Output */
   Serial.begin(115200);
@@ -73,24 +76,25 @@ void setup() {
 
   rf95.setTxPower(23, false);
   rf95.setSpreadingFactor(12);
-  // rf95.setSignalBandwidth(12500);
 
-  if (!rf95.printRegisters()) {
-    Serial.println("printRegisters failed");
-    while (1)
-      ;
-  }
+  // PRINT REGISTERS FOR DEBUGGING
+  // if (!rf95.printRegisters()) {
+  //   Serial.println("printRegisters failed");
+  //   while (1)
+  //     ;
+  // }
   
   current_state = AWAIT; 
 }
 
-uint8_t recv_buf[RH_RF95_MAX_MESSAGE_LEN];
-uint8_t recv_buf_len = RH_RF95_MAX_MESSAGE_LEN;
-
 /* ---------------------LOOP-------------------- */
 /* --------------------------------------------- */
+
+uint8_t recv_buf[RH_RF95_MAX_MESSAGE_LEN];
+uint8_t recv_buf_len = RH_RF95_MAX_MESSAGE_LEN;
 int expected_seq=0;
 int seq = 0;
+
 void loop() {
 #ifdef LOGGING
   /* Gather Data from GPS */
@@ -100,9 +104,6 @@ void loop() {
       char c = Serial1.read();
       // Serial.write(c);  // uncomment this line if you want to see the GPS data flowing
       gps.encode(c);
-      // if (gps.encode(c)) {
-        // Serial.println("GPS data successfully parsed!");
-      // }
     }
   }
 #endif
@@ -118,6 +119,10 @@ void loop() {
       if (rf95.waitAvailableTimeout(AWAIT_TIMEOUT)) {
         if (rf95.recv(recv_buf, &recv_buf_len)) {
           /* Extract the data segment from the recieved buffer */
+          /* The modified radiohead recieve function puts the 
+           * entire packet in the buffer, including the header 
+           * so we have to extract the data segment from the buffer
+           */
           uint8_t data[RH_RF95_MAX_MESSAGE_LEN-4];//-4 for the header
           uint8_t data_len;
           rf95.extractData(recv_buf, data, &data_len);
@@ -138,31 +143,37 @@ void loop() {
        * Change state to back to AWAIT 
        */
       Serial.println("RECV STATE");
-      /* Do something with recv_buf */
       uint8_t got_seq = rf95.headerSeq();
-      //uint8_t ack = rf95.headerSeq() + 1;
       uint8_t cmd = rf95.headerCMD();
       uint8_t len = rf95.headerLen();
       Serial.print("Got Seq:");
       Serial.println(got_seq);
-      // Serial.println(ack-1);
       Serial.print("Got cmd:");
       Serial.println(cmd);
+      #ifdef LED
       digitalWrite(RX_LED, HIGH);
-      // delay(400);
+      #endif
       recv_t recv_pkt = {rf95.headerSeq(), rf95.headerAck(), rf95.headerCMD(), rf95.headerLen(), recv_buf, rf95.lastRssi(), rf95.lastSNR()};
 #ifdef LOGGING
-      /* LOG-TYPE,Time,GPS-Coords,,,RecievedPacket */
+      /* LOG-TYPE,RSSI,SNR,Time,GPS-Coords,,,RecievedPacket */
       writeLog("RECV", recv_pkt);
 #endif
-      //reset
+      /* Reset/Resyncronize expected seq# */
       if(got_seq == 0)
         expected_seq = 0;
-      /* Send ACK */
-      //send back with ack = seq anyways
+      /* Only takes action if it recieves the seq# is expects
+       * Otherwise it will just send the packet back as an ack
+       * This is assuming a duplicated packet was recieved by the GS 
+       * meaning the first ack never got there
+      */
       if(expected_seq == got_seq){
-        //if the motor is busy and the cmd is not (cutdown or close)
-        if(MotorBusy && cmd != 3 && cmd != 2){
+        /* If the motor is busy and the cmd is not (cutdown or close)
+         * send BUSY in the ack. Otherwise, execute the command and send ack
+        */
+        if(MotorBusy && cmd != CUTDOWN && cmd != CLOSE /*&& cmd != ...*/){
+          /* If cmd is cutdown or close bypass the busy flag because we 
+           * don't care that the motor is busy, we want to close it, or cutdown the balloon
+          */
           Serial.println("Sent ack-BUSY");
           cmd = BUSY;
         }
@@ -179,30 +190,18 @@ void loop() {
       else{
         Serial.println("Sent Ack, Duplicated packet");
       }
+      /* Send ACK */
       rf95.setHeaders(seq, got_seq, cmd, 0);
       rf95.send(NULL, 0);
       seq=(seq+1)%256;
       if(seq==0){
         seq=1;
       } 
-      // if (MotorBusy && cmd!=3 && cmd!=2){
-      //   rf95.setHeaders(seq, ack, 255, 0);
-      //   seq=(seq+1)%256;
-      //   rf95.send(NULL, 0);
-      //   Serial.println("Sent ack-BUSY");
-      //   current_state = AWAIT;
-      // }
-      // else{
-      //   rf95.setHeaders(seq, ack, cmd, 0);
-      //   rf95.send(NULL, 0);
-      //   seq=(seq+1)%256;
-      //   Serial.println("Sent ack");
-      //   interpret_command(recv_buf);
-      //   current_state = AWAIT;
-      // }
 
       current_state = AWAIT;
+      #ifdef LED
       digitalWrite(RX_LED, LOW);
+      #endif
       break;
     }
     default:
@@ -211,7 +210,11 @@ void loop() {
   }
 }
 
+/* --------------------------------------------- */
+/* -------------------END LOOP------------------ */
+
 #ifdef LOGGING
+/* Write Log to SD card */
 bool writeLog(char* type, recv_t recv_pkt) {
   float flat, flon, falt, fspeed;
   gps.f_get_position(&flat, &flon);
@@ -268,38 +271,19 @@ void interpret_command(uint8_t* recv_buf){
     Serial.print("Undefined Command Range");
     Serial.println(cmd);
   }
-  // if(cmd>0 && cmd<=193){
-  //   uint8_t offset=0;
-  //   if (length > 8){
-  //     Serial.print("Truncating");
-  //     Serial.println(length);
-  //     offset = length-8;
-  //     length = 8; //Cap length to 8
-  //     /* Only read lower 8 bytes */
-  //   }
-  //   Serial.println("Binary Encoded data: ");
-  //   uint64_t decimal=0;
-  //   /* Decodes big endian decimal */
-  //   for (size_t i = offset; i < length;i++){
-  //     decimal = (decimal<<8) | recv_buf[i];
-  //   }
-  //   //Execute
-  //   execute_command(cmd, decimal);
-  // }
-  // else{
-  //   Serial.print("Undefined Command Range");
-  //   Serial.println(cmd);
-  // }
+
 }
 
+/* Closes motor and stops and resets hardware timer */
 void resetMotor(){
-  motor.write(0);
+  motor.write(SERVO_ANGLE_CLOSED);
   MotorBusy = false;
   Serial.println("Timer ended");
   motorTimer->pause();
   motorTimer->setCount(0);
 }
 
+/* Execute Commands with no payload */
 void execute_command_0(uint8_t cmd){
   switch(cmd){
     case cIDLE: {
@@ -324,6 +308,7 @@ void execute_command_0(uint8_t cmd){
   }
 }
 
+/* Execute commands with binary number payload */
 void execute_command_1(uint8_t cmd, uint64_t num){
   switch(cmd){
     case cIDLE: {
@@ -343,7 +328,7 @@ void execute_command_1(uint8_t cmd, uint64_t num){
     case OPENs: {
       Serial.print("Open (s): ");
       Serial.println(num);
-      motor.write(SERVO_ANGLE);      
+      motor.write(SERVO_ANGLE_OPEN);      
       motorTimer->setPrescaleFactor(65535);
       motorTimer->attachInterrupt(resetMotor);
       uint32_t arr = (uint32_t)num * 1221;
@@ -353,8 +338,6 @@ void execute_command_1(uint8_t cmd, uint64_t num){
       motorTimer->resume();
       Serial.println("Timer started");
       MotorBusy = true;
-      // delay(num*1000);  
-      // motor.write(0);
       break;
     }
     default: {
@@ -364,3 +347,32 @@ void execute_command_1(uint8_t cmd, uint64_t num){
     }
   }
 }
+
+/* Add other command types here */
+/* Use this as a template - Make sure to add new commands the the commands_t enum in Balloon.h
+ * and add the command range in interpret_command() to call this function 
+ 
+void execute_command_x(uint8_t cmd, data_type data_value){
+  switch(cmd){
+    case A COMMAND: {
+      Serial.println("Idle, do nothing");
+      break;
+    }
+    case ANOTHER COMMAND: {
+      Serial.println("Cutdown");
+      break;
+    }
+    case YET ANOTHER COMMAND: {
+      if(MotorBusy){
+        resetMotor();
+      }
+      break;
+    }
+    default: {
+      Serial.print("Unknown command");
+      Serial.println(cmd);
+      break;
+    }
+  }
+}
+*/

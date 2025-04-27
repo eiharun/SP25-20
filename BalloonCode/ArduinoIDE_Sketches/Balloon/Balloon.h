@@ -21,13 +21,20 @@
 #define GPS_RX 4
 
 #define RF95_FREQ 915.0
-#define AWAIT_TIMEOUT 5000  //15000 /* Time in MS to wait after IDLE packet was sent to recieve a reply. MAX is 65535 */
-#define INACTIVITY_TIMEOUT 10000//300000
+#define AWAIT_TIMEOUT 5000  /* Time in MS to wait to recieve a reply. MAX is 65535 */
+/* Await_timeout is beneficial because it 'hogs' cpu time listening for commands
+ * which is necessary for the balloon to be able to respond to commands.
+ * Especially with logging enabled, every loop iteration, the gps is polled for a 
+ * whole second, gathering gps data. Not having a blocking timeout in the AWAIT state for listening
+ * for commands would give the cpu more time to poll the gps and proportionally less time to listen for commands.
+*/
 
-#define SERVO_ANGLE 100
+#define SERVO_ANGLE_CLOSED 0 /* Adjust as needed to close the vent (0-180)*/
+#define SERVO_ANGLE_OPEN 100 /* Adjust as needed to open the vent (0-180)*/
 
 #define RH_RF95_MAX_MESSAGE_LEN RH_RF95_MAX_PAYLOAD_LEN
 
+/* Add more commands here if needed */
 enum commands_t {
   cIDLE=1, CUTDOWN=2, CLOSE=3, OPENs=64, BUSY=255
 };
@@ -38,6 +45,7 @@ enum state_t { LOWPOWER,
                AWAKE };
 state_t current_state;
 
+/* Struct used to pass recieved data to the logger */
 struct recv_t {
   uint8_t seq;
   uint8_t ack;
@@ -67,8 +75,11 @@ bool MotorBusy;
 #ifdef LOGGING
 bool writeLog(char* type, recv_t recv_pkt);
 #endif
+
+/* interpret_command takes in the recieved data and determines how to parse it
+ * then sends it to execute_command_x to execute it
+*/
 void interpret_command(uint8_t* recv_buf);
-//void execute_command_0(uint8_t cmd);
-//void execute_command_1(uint8_t cmd, uint64_t num);
-void execute_command(uint8_t cmd, uint64_t num = 0);
+void execute_command_0(uint8_t cmd);
+void execute_command_1(uint8_t cmd, uint64_t num);
 

@@ -1,11 +1,10 @@
-# STM32 Project for interfacing with RFM95W
+# Table of Contents
 
-## RFM95W Drivers
-
-[LoRa-RFM95-STM32 by MartinGeek17](https://github.com/MartiGeek17/LoRa-RFM95-STM32/tree/master)
-
-[stm32-hal-rfm95 by henriheimann](https://github.com/henriheimann/stm32-hal-rfm95/tree/master)
-
-> Todo: analyze which is the better option to build off of or to work with
-
-Using RadioHead Library instead
+- [STM32 Code](./ArduinoIDE_Sketches/)
+  - [Ballon Code](./ArduinoIDE_Sketches/Balloon/)
+  - [test sketehes](./ArduinoIDE_Sketches/test_sketches/)
+  - [Psuedo Ground Station Code](./PseudoGroundStation/)
+    - Used to test initial communication with the balloon venting system. [Please use Raspi instead for the ground station.]
+- [Modified RadioHead Header](./Modified_RadioHead/)
+  - [CPP](./Modified_RadioHead/RH_RF95_CH.cpp)
+  - [H](./Modified_RadioHead/RH_RF95_CH.h)

@@ -2,6 +2,11 @@
 
 Just put both files in the RadioHead library directory (i.e. next to the RH_RF95.h file).
 
+> Typically this folder it located under `Documents/Arduino/libraries/RadioHead/`
+
+- [RH_RF95_CH.cpp](./RH_RF95_CH.cpp)
+- [RH_RF95_CH.h](./RH_RF95_CH.h)
+
 Then in your sketch, include the header file:
 
 ```cpp

@@ -2,11 +2,11 @@
 
 ## Table of Directories
 
-- [Communication Protocol](./Communication_Protocol/)
-  - Will likely be deleted soon. Contains references to the old TCP based communication protocol.
-- [STM32 Code](./HAB_STM32/)
+- [Documentation](./Documentation/)
+  - Contains all documentation related to the project. How to use the system, how to set it up, etc.
+- [Balloon Code](./BalloonCode/)
   - Contains all code related to the STM32 microcontroller.
-- [Raspi Code](./RaspberryPi/)
+- [Raspberry Pi Code](./RaspberryPi/)
   - Contains all code related to the Raspberry Pi/UI.
-- [Testing related code](./Testing/)
+- [Testing related code and data](./Testing/)
   - Contains all code related to testing the system.
