@@ -13,7 +13,7 @@
 #define RFM95_RST 2
 #define RFM95_CS 3
 #define RFM95_INT 0
-#define TX_LED A5
+#define STATUS_LED A5
 #define RX_LED A6
 #define SD_CS 6
 #define SERVO_PIN 9

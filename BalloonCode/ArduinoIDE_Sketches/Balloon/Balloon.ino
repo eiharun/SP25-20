@@ -1,16 +1,17 @@
 #define LOGGING //COMMENT TO DISABLE LOGGING AND DEPENDENCIES (if you don't have GPS or SD card connected)
-#define LED //COMMENT TO DISABLE LEDS 
+// #define LED //COMMENT TO DISABLE LEDS 
 
 #include "Balloon.h"
 
 void setup() {
   SystemClock_Config(); 
   pinMode(RFM95_RST, OUTPUT);
+  pinMode(STATUS_LED, OUTPUT);
   #ifdef LED
-  pinMode(TX_LED, OUTPUT);
   pinMode(RX_LED, OUTPUT);
   #endif
   digitalWrite(RFM95_RST, HIGH);
+  digitalWrite(STATUS_LED, HIGH);
 
   /* Attach Servo Motor */
   motor.attach(SERVO_PIN, 500, 2400);
@@ -85,6 +86,7 @@ void setup() {
   // }
   
   current_state = AWAIT; 
+  digitalWrite(STATUS_LED, LOW);
 }
 
 /* ---------------------LOOP-------------------- */
