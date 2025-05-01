@@ -4,6 +4,8 @@ Table of Contents
 
 1. [Set-up for Programming and Uploading Code](#programming-and-uploading-code)
 2. [Balloon Code](#balloon-code)
+   1. [Dependencies](#dependencies)
+   2. [Other](#other)
 
 ## Programming and Uploading Code
 
@@ -39,3 +41,20 @@ Under "Tools", make sure:
 ## Balloon Code
 
 > "Servo.h" may cause some problems after installing STM32duino board manager. The best workaround is to change the Servo folder and Servo.h file name in the arduino library to something different "e.g. Servo_ardu.h"
+
+The balloon code includes [Balloon.ino](/BalloonCode/ArduinoIDE_Sketches/Balloon/Balloon.ino) and [Balloon.h](/BalloonCode/ArduinoIDE_Sketches/Balloon/Balloon.h) which have detailed comments to explain the code as well as how to add onto it.
+
+**REQUIRED**: Before uploading any code make sure to put both files in [Modified RadioHead](/BalloonCode/Modified_RadioHead/README.md) into the RadioHead library source. Most likely under `Documents/Arduino/libraries/RadioHead`. More information is in the README in that folder
+
+### Dependencies
+
+- [RadioHead](https://www.airspayce.com/mikem/arduino/RadioHead/)
+  - Type Radiohead into the library manager. Author: Mike McCauley
+- [TinyGPS](https://github.com/neosarchizo/TinyGPS)
+  - Type TinyGPS into the library manager. Author: Mikal Hart
+
+### Other
+
+We also provide example/test sketches that we used for range testing under the [test sketches](/BalloonCode/ArduinoIDE_Sketches/test_sketches/) directory.
+
+The [psuedo-ground station](/BalloonCode/ArduinoIDE_Sketches/PseudoGroundStation/PseudoGroundStation.ino) was used as a preliminary version of the ground station for testing purposes.
