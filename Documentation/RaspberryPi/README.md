@@ -31,6 +31,14 @@ You can run launchgui.sh and launchtui.sh to launch the gui and tui respectively
 
 If you would like a Desktop shortcut to the GUI (useful while 'in the field'), copy [GUI.desktop](/RaspberryPi/GUI.desktop) to the Desktop dir (`/home/{user}/Desktop`)
 
+### GUI
+
+The GUI will be the default entrypoint in communicating with the balloon. It's easy to use and quick to set up making it the ideal option for ground station members.
+
+### TUI
+
+The TUI (Texual User Interface), or the Command Line Interface (CLI), on the other hand requrires a seperate laptop to ssh into the raspberry pi and launch the cli where commands can be typed. This provides more flexibility as well as giving support for custom packets that can be used later on for testing new commands/protocols/etc.
+
 ## RFM95 Wiring
 
 | RFM95 Pin | Raspberry Pi Pin |

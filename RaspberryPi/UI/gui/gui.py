@@ -172,11 +172,8 @@ class Trans:
         num_bytes, payload = 0, b''
         if isinstance(arg, int):
             num_bytes, payload = self.byte_w_len(arg)
-
-
+            
         self.rfm95.send(payload, seq=self.seq, ack=0, CMD=self.cmd, length=num_bytes)
-        
-
         start_time = time.monotonic()
         valid_ack_received = False
         while (time.monotonic() - start_time) < self.RFMtimeout:

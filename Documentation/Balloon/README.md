@@ -7,6 +7,11 @@ Table of Contents
    1. [Dependencies](#dependencies)
    2. [Other](#other)
 
+Other pages
+
+- [Modified RadioHead](./Modified_RadioHead.md)
+- [Wiring](./Wiring_and_hardware.md)
+
 ## Programming and Uploading Code
 
 > The balloon venting system uses an STM32 microcontroller and can be programmed using the Arduino IDE. Therefore, there are steps that need to be taken to set up the IDE with the STM32 MCU.
@@ -44,7 +49,9 @@ Under "Tools", make sure:
 
 The balloon code includes [Balloon.ino](/BalloonCode/ArduinoIDE_Sketches/Balloon/Balloon.ino) and [Balloon.h](/BalloonCode/ArduinoIDE_Sketches/Balloon/Balloon.h) which have detailed comments to explain the code as well as how to add onto it.
 
-**REQUIRED**: Before uploading any code make sure to put both files in [Modified RadioHead](/BalloonCode/Modified_RadioHead/README.md) into the RadioHead library source. Most likely under `Documents/Arduino/libraries/RadioHead`. More information is in the README in that folder
+Important!: There is a LED led on the board that will turn on during setup. If this LED stays on it means something went wrong and the system is non operational. (See code for potential faults). If you see the LED turn on then off, it means the loop is executing and should be good to go. You should always test the commands before you attach the payload to the flight string.
+
+**REQUIRED**: Before uploading any code make sure to put both files in [Modified RadioHead](Modified_RadioHead.md) into the RadioHead library source. Most likely under `Documents/Arduino/libraries/RadioHead`. More information is in the README in that folder
 
 ### Dependencies
 
